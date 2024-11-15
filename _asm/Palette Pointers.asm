@@ -11,8 +11,8 @@ PalPointers:
 
 ; palette address, RAM address, colours
 
-ptr_Pal_SegaBG:		palp	Pal_SegaBG,$FB00,$40		; 0 - Sega logo
+ptr_Pal_Gamemode01:		palp	Pal_Gamemode01,$FB00,$40		; 0 - Game mode 01
 			even
 
 
-palid_SegaBG:		equ (ptr_Pal_SegaBG-PalPointers)/8
+palid_Gamemode01:		equ (ptr_Pal_Gamemode01-PalPointers)/8

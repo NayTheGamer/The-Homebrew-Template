@@ -1390,7 +1390,7 @@ PalLoad2:
 ; ---------------------------------------------------------------------------
 ; Palette data
 ; ---------------------------------------------------------------------------
-Pal_SegaBG:	; put palette here
+Pal_Gamemode01:	; put palette here
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	wait for VBlank routines to complete
@@ -1409,7 +1409,7 @@ WaitForVBla:				; XREF: PauseGame
 ; End of function WaitForVBla
 
 ; ---------------------------------------------------------------------------
-; Sega screen
+; Game mode 01
 ; ---------------------------------------------------------------------------
 
 GM_Gamemode01:				; XREF: GameModeArray
@@ -1433,7 +1433,7 @@ GM_Gamemode01:				; XREF: GameModeArray
 		copyTilemap	$FF0180,$C000,$27,$1B
 
 	@loadpal:
-		moveq	#palid_SegaBG,d0
+		moveq	#palid_Gamemode01,d0
 		bsr.w	PalLoad2	
 		move.w	#0,(v_pal_buffer+$12).w
 		move.w	#0,(v_pal_buffer+$10).w
@@ -1441,7 +1441,7 @@ GM_Gamemode01:				; XREF: GameModeArray
 		ori.b	#$40,d0
 		move.w	d0,($C00004).l
 
-Sega_WaitPal:
+Gamemode01_WaitPal:
 		move.b	#2,(v_vbla_routine).w
 		bsr.w	WaitForVBla
 
@@ -1450,13 +1450,13 @@ Sega_WaitPal:
 		bsr.w	WaitForVBla
 		move.w	#$1E,(v_demolength).w
 
-Sega_WaitEnd:
+Gamemode01_WaitEnd:
 		move.b	#2,(v_vbla_routine).w
 		bsr.w	WaitForVBla
 		tst.w	(v_demolength).w
-		beq.s	Sega_GotoTitle
+		beq.s	Gamemode01_GotoTitle
 		andi.b	#btnStart,(v_jpadpress1).w ; is Start button pressed?
-		beq.s	Sega_WaitEnd	; if not, branch
+		beq.s	Gamemode01_WaitEnd	; if not, branch
 
 Sega_GotoTitle:
 		rts	
