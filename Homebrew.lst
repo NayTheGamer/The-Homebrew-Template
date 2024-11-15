@@ -1912,17 +1912,17 @@
 000011FE                            
 000011FE                            ; palette address, RAM address, colours
 000011FE                            
-000011FE 0000 0000 FB00 001F        ptr_Pal_SegaBG:		palp	Pal_SegaBG,$FB00,$40		; 0 - Sega logo
+000011FE 0000 0000 FB00 001F        ptr_Pal_Gamemode01:		palp	Pal_Gamemode01,$FB00,$40		; 0 - Game mode 01
 00001206                            			even
 00001206                            
 00001206                            
-00001206 =00000000                  palid_SegaBG:		equ (ptr_Pal_SegaBG-PalPointers)/8
-00001206 =00000000                  palid_SegaBG:		equ (ptr_Pal_SegaBG-PalPointers)/8
+00001206 =00000000                  palid_Gamemode01:		equ (ptr_Pal_Gamemode01-PalPointers)/8
+00001206 =00000000                  palid_Gamemode01:		equ (ptr_Pal_Gamemode01-PalPointers)/8
 00001206                            
 00001206                            ; ---------------------------------------------------------------------------
 00001206                            ; Palette data
 00001206                            ; ---------------------------------------------------------------------------
-00001206                            Pal_SegaBG:	; put palette here
+00001206                            Pal_Gamemode01:	; put palette here
 00001206                            
 00001206                            ; ---------------------------------------------------------------------------
 00001206                            ; Subroutine to	wait for VBlank routines to complete
@@ -1941,7 +1941,7 @@
 00001212                            ; End of function WaitForVBla
 00001212                            
 00001212                            ; ---------------------------------------------------------------------------
-00001212                            ; Sega screen
+00001212                            ; Game mode 01
 00001212                            ; ---------------------------------------------------------------------------
 00001212                            
 00001212                            GM_Gamemode01:				; XREF: GameModeArray
@@ -1965,7 +1965,7 @@
 00001266 43F9 00FF 0180 203C 4000+  		copyTilemap	$FF0180,$C000,$27,$1B
 0000127A                            
 0000127A                            	@loadpal:
-0000127A 7000                       		moveq	#palid_SegaBG,d0
+0000127A 7000                       		moveq	#palid_Gamemode01,d0
 0000127C 6100 FF68                  		bsr.w	PalLoad2	
 00001280 31FC 0000 F662             		move.w	#0,(v_pal_buffer+$12).w
 00001286 31FC 0000 F660             		move.w	#0,(v_pal_buffer+$10).w
@@ -1973,7 +1973,7 @@
 00001290 0000 0040                  		ori.b	#$40,d0
 00001294 33C0 00C0 0004             		move.w	d0,($C00004).l
 0000129A                            
-0000129A                            Sega_WaitPal:
+0000129A                            Gamemode01_WaitPal:
 0000129A 11FC 0002 F62A             		move.b	#2,(v_vbla_routine).w
 000012A0 6100 FF64                  		bsr.w	WaitForVBla
 000012A4                            
@@ -1982,15 +1982,15 @@
 000012AE 6100 FF56                  		bsr.w	WaitForVBla
 000012B2 31FC 001E F614             		move.w	#$1E,(v_demolength).w
 000012B8                            
-000012B8                            Sega_WaitEnd:
+000012B8                            Gamemode01_WaitEnd:
 000012B8 11FC 0002 F62A             		move.b	#2,(v_vbla_routine).w
 000012BE 6100 FF46                  		bsr.w	WaitForVBla
 000012C2 4A78 F614                  		tst.w	(v_demolength).w
-000012C6 6700                       		beq.s	Sega_GotoTitle
+000012C6 6700                       		beq.s	Gamemode01_GotoTitle
 000012C8 0238 0080 F605             		andi.b	#btnStart,(v_jpadpress1).w ; is Start button pressed?
-000012CE 67E8                       		beq.s	Sega_WaitEnd	; if not, branch
+000012CE 67E8                       		beq.s	Gamemode01_WaitEnd	; if not, branch
 000012D0                            
-000012D0                            Sega_GotoTitle:
+000012D0                            Gamemode01_GotoTitle:
 000012D0 4E75                       		rts	
 000012D2                            ; ===========================================================================
 000012D2                            

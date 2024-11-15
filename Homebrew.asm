@@ -1458,7 +1458,7 @@ Gamemode01_WaitEnd:
 		andi.b	#btnStart,(v_jpadpress1).w ; is Start button pressed?
 		beq.s	Gamemode01_WaitEnd	; if not, branch
 
-Sega_GotoTitle:
+Gamemode01_GotoTitle:
 		rts	
 ; ===========================================================================
 
