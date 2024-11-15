@@ -1,0 +1,1998 @@
+00000000                            ; ===========================================================================
+00000000                            ;             The               Homebrew             Template
+00000000                            ; ===========================================================================
+00000000                            ; credits to all of the ppl who worked on the original sonic 1 disasm
+00000000                            ; as yes this is based of sonic 1 just deconstructed heavily for homebrew use
+00000000                            ; ===========================================================================
+00000000                            ; Note: Variables haven't been modified because I'm too lazy too :P
+00000000                            ; macros has been modifed to remove Start, Stop and waitZ80 macros
+00000000                            ; as well as Constants to delete all unused bgm_ and sfx_
+00000000                            ; so you can put in whatever sound driver you want to put in
+00000000                            ; ===========================================================================
+00000000                            ;                                 !Enjoy!
+00000000                            ; ===========================================================================
+00000000                            	include	"Variables.asm"
+00000000                            ; Variables (v) and Flags (f)
+00000000                            
+00000000 =FFFFFC00                  v_regbuffer:	= $FFFFFC00	; stores registers d0-a7 during an error event ($40 bytes)
+00000000 =FFFFFC40                  v_spbuffer:	= $FFFFFC40	; stores most recent sp address (4 bytes)
+00000000 =FFFFFC44                  v_errortype:	= $FFFFFC44	; error type
+00000000                            
+00000000 =00FF0000                  v_256x256:	=   $FF0000	; 256x256 tile mappings ($A400 bytes)
+00000000 =FFFFA400                  v_lvllayout:	= $FFFFA400	; level and background layouts ($400 bytes)
+00000000                            
+00000000 =FFFFAA00                  v_ngfx_buffer:	= $FFFFAA00	; Nemesis graphics decompression buffer ($200 bytes)
+00000000 =FFFFAC00                  v_spritequeue:	= $FFFFAC00	; sprite display queue, in order of priority ($400 bytes)
+00000000 =FFFFB000                  v_16x16:	= $FFFFB000	; 16x16 tile mappings
+00000000                            
+00000000 =FFFFC800                  v_sgfx_buffer:	= $FFFFC800	; buffered Sonic graphics ($18 cells) ($300 bytes)
+00000000 =FFFFCB00                  v_tracksonic:	= $FFFFCB00	; position tracking data for Sonic ($100 bytes)
+00000000 =FFFFCC00                  v_scrolltable:	= $FFFFCC00	; scrolling table data ($400 bytes)
+00000000 =FFFFD000                  v_objspace:	= $FFFFD000	; object variable space ($40 bytes per object) ($2000 bytes)
+00000000 =FFFFD000                  v_player:	= v_objspace	; object variable space for Sonic ($40 bytes)
+00000000 =FFFFD800                  v_lvlobjspace:	= $FFFFD800	; level object variable space ($1800 bytes)
+00000000 =FFFFF000                  v_sndtype:	= $FFFFF000	; sound type (90=music; 80=waterfall; 70=sound; 68/60=special sound)
+00000000                            
+00000000 =FFFFF003                  f_stopmusic:	= $FFFFF003	; flag set to stop music when paused
+00000000                            
+00000000 =FFFFF009                  v_playsnd0:	= $FFFFF009	; sound or music copied from below
+00000000 =FFFFF00A                  v_playsnd1:	= $FFFFF00A	; sound or music to play
+00000000 =FFFFF00B                  v_playsnd2:	= $FFFFF00B	; special sound to play
+00000000 =FFFFF00C                  v_playnull:	= $FFFFF00C	; unused sound to play
+00000000                            
+00000000 =FFFFF018                  v_voice_ptr:	= $FFFFF018	; voice data pointer (4 bytes)
+00000000                            
+00000000 =FFFFF028                  v_tempo_mod:	= $FFFFF028	; music - tempo modifier
+00000000                            
+00000000 =FFFFF02B                  v_ring_speaker:	= $FFFFF02B	; which speaker the "ring" sound is played in (00 = right; 01 = left)
+00000000                            
+00000000 =FFFFF042                  v_tempo_time:	= $FFFFF042	; music - tempo dividing timing
+00000000                            
+00000000 =FFFFF044                  v_dac_ptr:	= $FFFFF044	; DAC channel pointer (4 bytes)
+00000000                            
+00000000 =FFFFF074                  v_fm1_ptr:	= $FFFFF074	; FM channel 1 pointer (4 bytes)
+00000000 =FFFFF078                  v_fm1_mod:	= $FFFFF078	; FM channel 1 modifier (2 bytes)
+00000000                            
+00000000 =FFFFF0A4                  v_fm2_ptr:	= $FFFFF0A4	; FM channel 2 pointer (4 bytes)
+00000000 =FFFFF0A8                  v_fm2_mod:	= $FFFFF0A8	; FM channel 2 modifier (2 bytes)
+00000000                            
+00000000 =FFFFF0D4                  v_fm3_ptr:	= $FFFFF0D4	; FM channel 3 pointer (4 bytes)
+00000000 =FFFFF0D8                  v_fm3_mod:	= $FFFFF0D8	; FM channel 3 modifier (2 bytes)
+00000000                            
+00000000 =FFFFF104                  v_fm4_ptr:	= $FFFFF104	; FM channel 4 pointer (4 bytes)
+00000000 =FFFFF108                  v_fm4_mod:	= $FFFFF108	; FM channel 4 modifier (2 bytes)
+00000000                            
+00000000 =FFFFF134                  v_fm5_ptr:	= $FFFFF134	; FM channel 5 pointer (4 bytes)
+00000000 =FFFFF138                  v_fm5_mod:	= $FFFFF138	; FM channel 5 modifier (2 bytes)
+00000000                            
+00000000 =FFFFF194                  v_psg1_ptr:	= $FFFFF194	; PSG channel 1 pointer (4 bytes)
+00000000 =FFFFF198                  v_psg1_mod:	= $FFFFF198	; PSG channel 1 modifier (2 bytes)
+00000000                            
+00000000 =FFFFF1C4                  v_psg2_ptr:	= $FFFFF1C4	; PSG channel 2 pointer (4 bytes)
+00000000 =FFFFF1C8                  v_psg2_mod:	= $FFFFF1C8	; PSG channel 2 modifier (2 bytes)
+00000000                            
+00000000 =FFFFF1F4                  v_psg3_ptr:	= $FFFFF1F4	; PSG channel 3 pointer (4 bytes)
+00000000 =FFFFF1F8                  v_psg3_mod:	= $FFFFF1F8	; PSG channel 3 modifier (2 bytes)
+00000000                            
+00000000 =FFFFF3CA                  f_fastmusic:	= $FFFFF3CA	; flag set to speed up the music (00 = normal; 80 = fast)
+00000000                            
+00000000 =FFFFF600                  v_gamemode:	= $FFFFF600	; game mode (00=Sega; 04=Title; 08=Demo; 0C=Level; 10=SS; 14=Cont; 18=End; 1C=Credit; +8C=PreLevel)
+00000000 =FFFFF602                  v_jpadhold2:	= $FFFFF602	; joypad input - held, duplicate
+00000000 =FFFFF603                  v_jpadpress2:	= $FFFFF603	; joypad input - pressed, duplicate
+00000000 =FFFFF604                  v_jpadhold1:	= $FFFFF604	; joypad input - held
+00000000 =FFFFF605                  v_jpadpress1:	= $FFFFF605	; joypad input - pressed
+00000000                            
+00000000 =FFFFF60C                  v_vdp_buffer1:	= $FFFFF60C	; VDP instruction buffer (2 bytes)
+00000000                            
+00000000 =FFFFF614                  v_demolength:	= $FFFFF614	; the length of a demo in frames (2 bytes)
+00000000 =FFFFF616                  v_scrposy_dup:	= $FFFFF616	; screen position y (duplicate) (2 bytes)
+00000000                            
+00000000 =FFFFF61A                  v_scrposx_dup:	= $FFFFF61A	; screen position x (duplicate) (2 bytes)
+00000000                            
+00000000 =FFFFF624                  v_hbla_hreg:	= $FFFFF624	; VDP H.interrupt register buffer (8Axx) (2 bytes)
+00000000 =FFFFF625                  v_hbla_line:	= $FFFFF625	; screen line where water starts and palette is changed by HBlank
+00000000 =FFFFF626                  v_pfade_start:	= $FFFFF626	; palette fading - start position in bytes
+00000000 =FFFFF627                  v_pfade_size:	= $FFFFF627	; palette fading - number of colours
+00000000 =FFFFF62A                  v_vbla_routine:	= $FFFFF62A	; VBlank - routine counter
+00000000 =FFFFF62C                  v_spritecount:	= $FFFFF62C	; number of sprites on-screen
+00000000 =FFFFF632                  v_pcyc_num:	= $FFFFF632	; palette cycling - current reference number (2 bytes)
+00000000 =FFFFF634                  v_pcyc_time:	= $FFFFF634	; palette cycling - time until the next change (2 bytes)
+00000000 =FFFFF636                  v_random:	= $FFFFF636	; pseudo random number buffer (4 bytes)
+00000000 =FFFFF63A                  f_pause:	= $FFFFF63A	; flag set to pause the game (2 bytes)
+00000000 =FFFFF640                  v_vdp_buffer2:	= $FFFFF640	; VDP instruction buffer (2 bytes)
+00000000 =FFFFF644                  f_hbla_pal:	= $FFFFF644	; flag set to change palette during HBlank (0000 = no; 0001 = change) (2 bytes)
+00000000 =FFFFF646                  v_waterpos1:	= $FFFFF646	; water height, actual (2 bytes)
+00000000 =FFFFF648                  v_waterpos2:	= $FFFFF648	; water height, ignoring sway (2 bytes)
+00000000 =FFFFF64A                  v_waterpos3:	= $FFFFF64A	; water height, next target (2 bytes)
+00000000 =FFFFF64C                  f_water:	= $FFFFF64C	; flag set for water
+00000000 =FFFFF64D                  v_wtr_routine:	= $FFFFF64D	; water event - routine counter
+00000000 =FFFFF64E                  f_wtr_state:	= $FFFFF64E	; water palette state when water is above/below the screen (00 = partly/all dry; 01 = all underwater)
+00000000                            
+00000000 =FFFFF650                  v_pal_buffer:	= $FFFFF650	; palette data buffer (used for palette cycling) ($30 bytes)
+00000000 =FFFFF680                  v_plc_buffer:	= $FFFFF680	; pattern load cues buffer (maximum $10 PLCs) ($60 bytes)
+00000000 =FFFFF6E0                  v_ptrnemcode:	= $FFFFF6E0	; pointer for nemesis decompression code ($1502 or $150C) (4 bytes)
+00000000                            
+00000000 =FFFFF6F8                  f_plc_execute:	= $FFFFF6F8	; flag set for pattern load cue execution (2 bytes)
+00000000                            
+00000000 =FFFFF700                  v_screenposx:	= $FFFFF700	; screen position x (2 bytes)
+00000000                            
+00000000 =FFFFF704                  v_screenposy:	= $FFFFF704	; screen position y (2 bytes)
+00000000                            
+00000000 =FFFFF720                  v_limitleft1:	= $FFFFF720	; left level boundary (2 bytes)
+00000000 =FFFFF722                  v_limitright1:	= $FFFFF722	; right level boundary (2 bytes)
+00000000 =FFFFF724                  v_limittop1:	= $FFFFF724	; top level boundary (2 bytes)
+00000000 =FFFFF726                  v_limitbtm1:	= $FFFFF726	; bottom level boundary (2 bytes)
+00000000 =FFFFF728                  v_limitleft2:	= $FFFFF728	; left level boundary (2 bytes)
+00000000 =FFFFF72A                  v_limitright2:	= $FFFFF72A	; right level boundary (2 bytes)
+00000000 =FFFFF72C                  v_limittop2:	= $FFFFF72C	; top level boundary (2 bytes)
+00000000 =FFFFF72E                  v_limitbtm2:	= $FFFFF72E	; bottom level boundary (2 bytes)
+00000000                            
+00000000 =FFFFF732                  v_limitleft3:	= $FFFFF732	; left level boundary, at the end of an act (2 bytes)
+00000000                            
+00000000 =FFFFF73A                  v_scrshiftx:	= $FFFFF73A	; screen shift as Sonic moves horizontally
+00000000                            
+00000000 =FFFFF73E                  v_lookshift:	= $FFFFF73E	; screen shift when Sonic looks up/down (2 bytes)
+00000000 =FFFFF742                  v_dle_routine:	= $FFFFF742	; dynamic level event - routine counter
+00000000 =FFFFF744                  f_nobgscroll:	= $FFFFF744	; flag set to cancel background scrolling
+00000000                            
+00000000 =FFFFF754                  v_bgscroll1:	= $FFFFF754	; background scrolling variable 1
+00000000 =FFFFF756                  v_bgscroll2:	= $FFFFF756	; background scrolling variable 2
+00000000 =FFFFF758                  v_bgscroll3:	= $FFFFF758	; background scrolling variable 3
+00000000 =FFFFF75C                  f_bgscrollvert:	= $FFFFF75C	; flag for vertical background scrolling
+00000000 =FFFFF760                  v_sonspeedmax:	= $FFFFF760	; Sonic's maximum speed (2 bytes)
+00000000 =FFFFF762                  v_sonspeedacc:	= $FFFFF762	; Sonic's acceleration (2 bytes)
+00000000 =FFFFF764                  v_sonspeeddec:	= $FFFFF764	; Sonic's deceleration (2 bytes)
+00000000 =FFFFF766                  v_sonframenum:	= $FFFFF766	; frame to display for Sonic
+00000000 =FFFFF767                  f_sonframechg:	= $FFFFF767	; flag set to update Sonic's sprite frame
+00000000 =FFFFF768                  v_anglebuffer:	= $FFFFF768	; angle of collision block that Sonic or object is standing on
+00000000                            
+00000000 =FFFFF76C                  v_opl_routine:	= $FFFFF76C	; ObjPosLoad - routine counter
+00000000 =FFFFF76E                  v_opl_screen:	= $FFFFF76E	; ObjPosLoad - screen variable
+00000000 =FFFFF770                  v_opl_data:	= $FFFFF770	; ObjPosLoad - data buffer ($10 bytes)
+00000000                            
+00000000 =FFFFF780                  v_ssangle:	= $FFFFF780	; Special Stage angle (2 bytes)
+00000000 =FFFFF782                  v_ssrotate:	= $FFFFF782	; Special Stage rotation speed (2 bytes)
+00000000                            
+00000000 =FFFFF790                  v_btnpushtime1:	= $FFFFF790	; button push duration - in level (2 bytes)
+00000000 =FFFFF792                  v_btnpushtime2:	= $FFFFF792	; button push duration - in demo (2 bytes)
+00000000 =FFFFF794                  v_palchgspeed:	= $FFFFF794	; palette fade/transition speed (0 is fastest) (2 bytes)
+00000000 =FFFFF796                  v_collindex:	= $FFFFF796	; ROM address for collision index of current level (4 bytes)
+00000000 =FFFFF79A                  v_palss_num:	= $FFFFF79A	; palette cycling in Special Stage - reference number (2 bytes)
+00000000 =FFFFF79C                  v_palss_time:	= $FFFFF79C	; palette cycling in Special Stage - time until next change (2 bytes)
+00000000                            
+00000000 =FFFFF7A4                  v_obj31ypos:	= $FFFFF7A4	; y-position of object 31 (MZ stomper) (2 bytes)
+00000000 =FFFFF7A7                  v_bossstatus:	= $FFFFF7A7	; status of boss and prison capsule (01 = boss defeated; 02 = prison opened)
+00000000 =FFFFF7A8                  v_trackpos:	= $FFFFF7A8	; position tracking reference number (2 bytes)
+00000000 =FFFFF7A9                  v_trackbyte:	= $FFFFF7A9	; low byte for position tracking
+00000000 =FFFFF7AA                  f_lockscreen:	= $FFFFF7AA	; flag set to lock screen during bosses
+00000000 =FFFFF7AC                  v_256loop1:	= $FFFFF7AC	; 256x256 level tile which contains a loop (GHZ/SLZ)
+00000000 =FFFFF7AD                  v_256loop2:	= $FFFFF7AD	; 256x256 level tile which contains a loop (GHZ/SLZ)
+00000000 =FFFFF7AE                  v_256roll1:	= $FFFFF7AE	; 256x256 level tile which contains a roll tunnel (GHZ)
+00000000 =FFFFF7AF                  v_256roll2:	= $FFFFF7AF	; 256x256 level tile which contains a roll tunnel (GHZ)
+00000000 =FFFFF7B0                  v_lani0_frame:	= $FFFFF7B0	; level graphics animation 0 - current frame
+00000000 =FFFFF7B1                  v_lani0_time:	= $FFFFF7B1	; level graphics animation 0 - time until next frame
+00000000 =FFFFF7B2                  v_lani1_frame:	= $FFFFF7B2	; level graphics animation 1 - current frame
+00000000 =FFFFF7B3                  v_lani1_time:	= $FFFFF7B3	; level graphics animation 1 - time until next frame
+00000000 =FFFFF7B4                  v_lani2_frame:	= $FFFFF7B4	; level graphics animation 2 - current frame
+00000000 =FFFFF7B5                  v_lani2_time:	= $FFFFF7B5	; level graphics animation 2 - time until next frame
+00000000 =FFFFF7B6                  v_lani3_frame:	= $FFFFF7B6	; level graphics animation 3 - current frame
+00000000 =FFFFF7B7                  v_lani3_time:	= $FFFFF7B7	; level graphics animation 3 - time until next frame
+00000000 =FFFFF7B8                  v_lani4_frame:	= $FFFFF7B8	; level graphics animation 4 - current frame
+00000000 =FFFFF7B9                  v_lani4_time:	= $FFFFF7B9	; level graphics animation 4 - time until next frame
+00000000 =FFFFF7BA                  v_lani5_frame:	= $FFFFF7BA	; level graphics animation 5 - current frame
+00000000 =FFFFF7BB                  v_lani5_time:	= $FFFFF7BB	; level graphics animation 5 - time until next frame
+00000000 =FFFFF7BE                  v_gfxbigring:	= $FFFFF7BE	; settings for giant ring graphics loading (2 bytes)
+00000000 =FFFFF7C0                  f_conveyrev:	= $FFFFF7C0	; flag set to reverse conveyor belts in LZ/SBZ
+00000000 =FFFFF7C1                  v_obj63:	= $FFFFF7C1	; object 63 (LZ/SBZ platforms) variables (6 bytes)
+00000000 =FFFFF7C7                  f_wtunnelmode:	= $FFFFF7C7	; LZ water tunnel mode
+00000000 =FFFFF7C8                  f_lockmulti:	= $FFFFF7C8	; flag set to lock controls, lock Sonic's position & animation
+00000000 =FFFFF7C9                  f_wtunnelallow:	= $FFFFF7C9	; LZ water tunnels (00 = enabled; 01 = disabled)
+00000000 =FFFFF7CA                  f_jumponly:	= $FFFFF7CA	; flag set to lock controls apart from jumping
+00000000 =FFFFF7CB                  v_obj6B:	= $FFFFF7CB	; object 6B (SBZ stomper) variable
+00000000 =FFFFF7CC                  f_lockctrl:	= $FFFFF7CC	; flag set to lock controls during ending sequence
+00000000 =FFFFF7CD                  f_bigring:	= $FFFFF7CD	; flag set when Sonic collects the giant ring
+00000000 =FFFFF7D0                  v_itembonus:	= $FFFFF7D0	; item bonus from broken enemies, blocks etc. (2 bytes)
+00000000 =FFFFF7D2                  v_timebonus:	= $FFFFF7D2	; time bonus at the end of an act (2 bytes)
+00000000 =FFFFF7D4                  v_ringbonus:	= $FFFFF7D4	; ring bonus at the end of an act (2 bytes)
+00000000 =FFFFF7D6                  f_endactbonus:	= $FFFFF7D6	; time/ring bonus update flag at the end of an act
+00000000 =FFFFF7D7                  v_sonicend:	= $FFFFF7D7	; routine counter for Sonic in the ending sequence
+00000000 =FFFFF7E0                  f_switch:	= $FFFFF7E0	; flags set when Sonic stands on a switch ($10 bytes)
+00000000                            
+00000000 =FFFFF800                  v_sprites:	= $FFFFF800	; sprite table ($200 bytes)
+00000000 =FFFFFA00                  v_pal0_wat:	= $FFFFFA00	; duplicate palette data - underwater ($80 bytes)
+00000000 =FFFFFA80                  v_pal0_dry:	= $FFFFFA80	; duplicate palette data - main ($80 bytes)
+00000000 =FFFFFB00                  v_pal1_wat:	= $FFFFFB00	; palette data - underwater ($80 bytes)
+00000000 =FFFFFB80                  v_pal1_dry:	= $FFFFFB80	; palette data - main ($80 bytes)
+00000000 =FFFFFC00                  v_objstate:	= $FFFFFC00	; object state list ($200 bytes)
+00000000 =FFFFFE02                  f_restart:	= $FFFFFE02	; restart level flag (2 bytes)
+00000000 =FFFFFE04                  v_framecount:	= $FFFFFE04	; frame counter (adds 1 every frame) (2 bytes)
+00000000 =FFFFFE05                  v_framebyte:	= v_framecount+1; low byte for frame counter
+00000000 =FFFFFE06                  v_debugitem:	= $FFFFFE06	; debug item currently selected (NOT the object number of the item)
+00000000 =FFFFFE08                  v_debuguse:	= $FFFFFE08	; debug mode use & routine counter (when Sonic is a ring/item) (2 bytes)
+00000000 =FFFFFE0A                  v_debugxspeed:	= $FFFFFE0A	; debug mode - horizontal speed
+00000000 =FFFFFE0B                  v_debugyspeed:	= $FFFFFE0B	; debug mode - vertical speed
+00000000 =FFFFFE0C                  v_vbla_count:	= $FFFFFE0C	; vertical interrupt counter (adds 1 every VBlank) (4 bytes)
+00000000 =FFFFFE0E                  v_vbla_word:	= v_vbla_count+2 ; low word for vertical interrupt counter (2 bytes)
+00000000 =FFFFFE0F                  v_vbla_byte:	= v_vbla_word+1	; low byte for vertical interrupt counter
+00000000 =FFFFFE10                  v_zone:		= $FFFFFE10	; current zone number
+00000000 =FFFFFE11                  v_act:		= $FFFFFE11	; current act number
+00000000 =FFFFFE12                  v_lives:	= $FFFFFE12	; number of lives
+00000000 =FFFFFE14                  v_air:		= $FFFFFE14	; air remaining while underwater (2 bytes)
+00000000 =FFFFFE15                  v_airbyte:	= v_air+1	; low byte for air
+00000000 =FFFFFE16                  v_lastspecial:	= $FFFFFE16	; last special stage number
+00000000 =FFFFFE18                  v_continues:	= $FFFFFE18	; number of continues
+00000000 =FFFFFE1A                  f_timeover:	= $FFFFFE1A	; time over flag
+00000000 =FFFFFE1B                  v_lifecount:	= $FFFFFE1B	; lives counter value (for actual number, see "v_lives")
+00000000 =FFFFFE1C                  f_lifecount:	= $FFFFFE1C	; lives counter update flag
+00000000 =FFFFFE1D                  f_ringcount:	= $FFFFFE1D	; ring counter update flag
+00000000 =FFFFFE1E                  f_timecount:	= $FFFFFE1E	; time counter update flag
+00000000 =FFFFFE1F                  f_scorecount:	= $FFFFFE1F	; score counter update flag
+00000000 =FFFFFE20                  v_rings:	= $FFFFFE20	; rings (2 bytes)
+00000000 =FFFFFE21                  v_ringbyte:	= v_rings+1	; low byte for rings
+00000000 =FFFFFE22                  v_time:		= $FFFFFE22	; time (4 bytes)
+00000000 =FFFFFE23                  v_timemin:	= $FFFFFE23	; time - minutes
+00000000 =FFFFFE24                  v_timesec:	= $FFFFFE24	; time - seconds
+00000000 =FFFFFE25                  v_timecent:	= $FFFFFE25	; time - centiseconds
+00000000 =FFFFFE26                  v_score:	= $FFFFFE26	; score (4 bytes)
+00000000 =FFFFFE2C                  v_shield:	= $FFFFFE2C	; shield status (00 = no; 01 = yes)
+00000000 =FFFFFE2D                  v_invinc:	= $FFFFFE2D	; invinciblity status (00 = no; 01 = yes)
+00000000 =FFFFFE2E                  v_shoes:	= $FFFFFE2E	; speed shoes status (00 = no; 01 = yes)
+00000000 =FFFFFE30                  v_lastlamp:	= $FFFFFE30	; number of the last lamppost you hit
+00000000 =FFFFFE32                  v_lamp_xpos:	= v_lastlamp+2	; x-axis for Sonic to respawn at lamppost (2 bytes)
+00000000 =FFFFFE34                  v_lamp_ypos:	= v_lastlamp+4	; y-axis for Sonic to respawn at lamppost (2 bytes)
+00000000 =FFFFFE36                  v_lamp_rings:	= v_lastlamp+6	; rings stored at lamppost (2 bytes)
+00000000 =FFFFFE38                  v_lamp_time:	= v_lastlamp+8	; time stored at lamppost (2 bytes)
+00000000 =FFFFFE3C                  v_lamp_dle:	= v_lastlamp+$C	; dynamic level event routine counter at lamppost
+00000000 =FFFFFE3E                  v_lamp_limitbtm:= v_lastlamp+$E	; level bottom boundary at lamppost (2 bytes)
+00000000 =FFFFFE40                  v_lamp_scrx:	= v_lastlamp+$10 ; x-axis screen at lamppost (2 bytes)
+00000000 =FFFFFE42                  v_lamp_scry:	= v_lastlamp+$12 ; y-axis screen at lamppost (2 bytes)
+00000000                            
+00000000 =FFFFFE50                  v_lamp_wtrpos:	= v_lastlamp+$20 ; water position at lamppost (2 bytes)
+00000000 =FFFFFE52                  v_lamp_wtrrout:	= v_lastlamp+$22 ; water routine at lamppost
+00000000 =FFFFFE53                  v_lamp_wtrstat:	= v_lastlamp+$23 ; water state at lamppost
+00000000 =FFFFFE54                  v_lamp_lives:	= v_lastlamp+$24 ; lives counter at lamppost
+00000000 =FFFFFE57                  v_emeralds:	= $FFFFFE57	; number of chaos emeralds
+00000000 =FFFFFE58                  v_emldlist:	= $FFFFFE58	; which individual emeralds you have (00 = no; 01 = yes) (6 bytes)
+00000000 =FFFFFE5E                  v_oscillate:	= $FFFFFE5E	; values which oscillate - for swinging platforms, et al ($42 bytes)
+00000000                            
+00000000 =FFFFFEC0                  v_ani0_time:	= $FFFFFEC0	; synchronised sprite animation 0 - time until next frame (used for synchronised animations)
+00000000 =FFFFFEC1                  v_ani0_frame:	= $FFFFFEC1	; synchronised sprite animation 0 - current frame
+00000000 =FFFFFEC2                  v_ani1_time:	= $FFFFFEC2	; synchronised sprite animation 1 - time until next frame
+00000000 =FFFFFEC3                  v_ani1_frame:	= $FFFFFEC3	; synchronised sprite animation 1 - current frame
+00000000 =FFFFFEC4                  v_ani2_time:	= $FFFFFEC4	; synchronised sprite animation 2 - time until next frame
+00000000 =FFFFFEC5                  v_ani2_frame:	= $FFFFFEC5	; synchronised sprite animation 2 - current frame
+00000000 =FFFFFEC6                  v_ani3_time:	= $FFFFFEC6	; synchronised sprite animation 3 - time until next frame
+00000000 =FFFFFEC7                  v_ani3_frame:	= $FFFFFEC7	; synchronised sprite animation 3 - current frame
+00000000 =FFFFFEC8                  v_ani3_buf:	= $FFFFFEC8	; synchronised sprite animation 3 - info buffer (2 bytes)
+00000000 =FFFFFEF0                  v_limittopdb:	= $FFFFFEF0	; level upper boundary, buffered for debug mode (2 bytes)
+00000000 =FFFFFEF2                  v_limitbtmdb:	= $FFFFFEF2	; level bottom boundary, buffered for debug mode (2 bytes)
+00000000                            
+00000000 =FFFFFF80                  v_levseldelay:	= $FFFFFF80	; level select - time until change when up/down is held (2 bytes)
+00000000 =FFFFFF82                  v_levselitem:	= $FFFFFF82	; level select - item selected (2 bytes)
+00000000 =FFFFFF84                  v_levselsound:	= $FFFFFF84	; level select - sound selected (2 bytes)
+00000000 =FFFFFFC0                  v_scorecopy:	= $FFFFFFC0	; score, duplicate (4 bytes)
+00000000 =FFFFFFC0                  v_scorelife:	= $FFFFFFC0	; points required for an extra life (4 bytes) (JP1 only)
+00000000 =FFFFFFE0                  f_levselcheat:	= $FFFFFFE0	; level select cheat flag
+00000000 =FFFFFFE1                  f_slomocheat:	= $FFFFFFE1	; slow motion & frame advance cheat flag
+00000000 =FFFFFFE2                  f_debugcheat:	= $FFFFFFE2	; debug mode cheat flag
+00000000 =FFFFFFE3                  f_creditscheat:	= $FFFFFFE3	; hidden credits & press start cheat flag
+00000000 =FFFFFFE4                  v_title_dcount:	= $FFFFFFE4	; number of times the d-pad is pressed on title screen (2 bytes)
+00000000 =FFFFFFE6                  v_title_ccount:	= $FFFFFFE6	; number of times C is pressed on title screen (2 bytes)
+00000000                            
+00000000 =FFFFFFF0                  f_demo:		= $FFFFFFF0	; demo mode flag (0 = no; 1 = yes; $8001 = ending) (2 bytes)
+00000000 =FFFFFFF2                  v_demonum:	= $FFFFFFF2	; demo level number (not the same as the level number) (2 bytes)
+00000000 =FFFFFFF4                  v_creditsnum:	= $FFFFFFF4	; credits index number (2 bytes)
+00000000 =FFFFFFF8                  v_megadrive:	= $FFFFFFF8	; Megadrive machine type
+00000000 =FFFFFFFA                  f_debugmode:	= $FFFFFFFA	; debug mode flag (sometimes 2 bytes)
+00000000 =FFFFFFFC                  v_init:		= $FFFFFFFC	; 'init' text string (4 bytes)
+00000000 =FFFFFFFC                  v_init:		= $FFFFFFFC	; 'init' text string (4 bytes)
+00000000                            	include	"Constants.asm"
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; Constants
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            ; VRAM data
+00000000 =0000C000                  vram_fg:	equ $C000	; foreground namespace
+00000000 =0000E000                  vram_bg:	equ $E000	; background namespace
+00000000 =0000F000                  vram_sonic:	equ $F000	; Sonic graphics
+00000000 =0000F800                  vram_sprites:	equ $F800	; sprite table
+00000000 =0000FC00                  vram_hscroll:	equ $FC00	; horizontal scroll table
+00000000                            
+00000000                            ; Game modes
+00000000                            id_Gamemode01:	equ ptr_GM_Gamemode01-GameModeArray	; $00
+00000000                            
+00000000                            ; Levels
+00000000                            
+00000000                            
+00000000                            ; Colours
+00000000 =00000000                  cBlack:		equ $000		; colour black
+00000000 =00000EEE                  cWhite:		equ $EEE		; colour white
+00000000 =00000E00                  cBlue:		equ $E00		; colour blue
+00000000 =000000E0                  cGreen:		equ $0E0		; colour green
+00000000 =0000000E                  cRed:		equ $00E		; colour red
+00000000 =000000EE                  cYellow:	equ cGreen+cRed		; colour yellow
+00000000 =00000EE0                  cAqua:		equ cGreen+cBlue	; colour aqua
+00000000 =00000E0E                  cMagenta:	equ cBlue+cRed		; colour magenta
+00000000                            
+00000000                            ; Joypad input
+00000000 =00000080                  btnStart:	equ %10000000 ; Start button	($80)
+00000000 =00000040                  btnA:		equ %01000000 ; A		($40)
+00000000 =00000020                  btnC:		equ %00100000 ; C		($20)
+00000000 =00000010                  btnB:		equ %00010000 ; B		($10)
+00000000 =00000008                  btnR:		equ %00001000 ; Right		($08)
+00000000 =00000004                  btnL:		equ %00000100 ; Left		($04)
+00000000 =00000002                  btnDn:		equ %00000010 ; Down		($02)
+00000000 =00000001                  btnUp:		equ %00000001 ; Up		($01)
+00000000 =0000000F                  btnDir:		equ %00001111 ; Any direction	($0F)
+00000000 =00000070                  btnABC:		equ %01110000 ; A, B or C	($70)
+00000000 =00000007                  bitStart:	equ 7
+00000000 =00000006                  bitA:		equ 6
+00000000 =00000005                  bitC:		equ 5
+00000000 =00000004                  bitB:		equ 4
+00000000 =00000003                  bitR:		equ 3
+00000000 =00000002                  bitL:		equ 2
+00000000 =00000001                  bitDn:		equ 1
+00000000 =00000000                  bitUp:		equ 0
+00000000                            
+00000000                            ; Object variables
+00000000 =00000001                  obRender:	equ 1	; bitfield for x/y flip, display mode
+00000000 =00000002                  obGfx:		equ 2	; palette line & VRAM setting (2 bytes)
+00000000 =00000004                  obMap:		equ 4	; mappings address (4 bytes)
+00000000 =00000008                  obX:		equ 8	; x-axis position (2-4 bytes)
+00000000 =0000000A                  obScreenY:	equ $A	; y-axis position for screen-fixed items (2 bytes)
+00000000 =0000000C                  obY:		equ $C	; y-axis position (2-4 bytes)
+00000000 =00000010                  obVelX:		equ $10	; x-axis velocity (2 bytes)
+00000000 =00000012                  obVelY:		equ $12	; y-axis velocity (2 bytes)
+00000000 =00000014                  obInertia:	equ $14	; potential speed (2 bytes)
+00000000 =00000016                  obHeight:	equ $16	; height/2
+00000000 =00000017                  obWidth:	equ $17	; width/2
+00000000 =00000018                  obPriority:	equ $18	; sprite stack priority -- 0 is front
+00000000 =00000019                  obActWid:	equ $19	; action width
+00000000 =0000001A                  obFrame:	equ $1A	; current frame displayed
+00000000 =0000001B                  obAniFrame:	equ $1B	; current frame in animation script
+00000000 =0000001C                  obAnim:		equ $1C	; current animation
+00000000 =0000001D                  obNextAni:	equ $1D	; next animation
+00000000 =0000001E                  obTimeFrame:	equ $1E	; time to next frame
+00000000 =0000001F                  obDelayAni:	equ $1F	; time to delay animation
+00000000 =00000020                  obColType:	equ $20	; collision response type
+00000000 =00000021                  obColProp:	equ $21	; collision extra property
+00000000 =00000022                  obStatus:	equ $22	; orientation or mode
+00000000 =00000023                  obRespawnNo:	equ $23	; respawn list index number
+00000000 =00000024                  obRoutine:	equ $24	; routine number
+00000000 =00000025                  ob2ndRout:	equ $25	; secondary routine number
+00000000 =00000026                  obAngle:	equ $26	; angle
+00000000 =00000028                  obSubtype:	equ $28	; object subtype
+00000000 =00000025                  obSolid:	equ ob2ndRout ; solid status flag
+00000000                            
+00000000                            ; Animation flags
+00000000 =000000FF                  afEnd:		equ $FF	; return to beginning of animation
+00000000 =000000FE                  afBack:		equ $FE	; go back (specified number) bytes
+00000000 =000000FD                  afChange:	equ $FD	; run specified animation
+00000000 =000000FC                  afRoutine:	equ $FC	; increment routine counter
+00000000 =000000FB                  afReset:	equ $FB	; reset animation and 2nd object routine counter
+00000000 =000000FA                  af2ndRoutine:	equ $FA	; increment 2nd routine counter
+00000000                            
+00000000                            
+00000000                            	include	"Macros.asm"
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; Align and pad
+00000000                            ; input: length to align to, value to use as padding (default is 0)
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            align:	macro
+00000000                            	if (narg=1)
+00000000                            	dcb.b \1-(*%\1),0
+00000000                            	else
+00000000                            	dcb.b \1-(*%\1),\2
+00000000                            	endc
+00000000                            	endm
+00000000                            
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; Set a VRAM address via the VDP control port.
+00000000                            ; input: 16-bit VRAM address, control port (default is ($C00004).l)
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            locVRAM:	macro loc,controlport
+00000000                            		if (narg=1)
+00000000                            		move.l	#($40000000+((loc&$3FFF)<<16)+((loc&$C000)>>14)),($C00004).l
+00000000                            		else
+00000000                            		move.l	#($40000000+((loc&$3FFF)<<16)+((loc&$C000)>>14)),controlport
+00000000                            		endc
+00000000                            		endm
+00000000                            
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; DMA copy data from 68K (ROM/RAM) to the VRAM
+00000000                            ; input: source, length, destination
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            writeVRAM:	macro
+00000000                            		lea	($C00004).l,a5
+00000000                            		move.l	#$94000000+(((\2>>1)&$FF00)<<8)+$9300+((\2>>1)&$FF),(a5)
+00000000                            		move.l	#$96000000+(((\1>>1)&$FF00)<<8)+$9500+((\1>>1)&$FF),(a5)
+00000000                            		move.w	#$9700+((((\1>>1)&$FF0000)>>16)&$7F),(a5)
+00000000                            		move.w	#$4000+(\3&$3FFF),(a5)
+00000000                            		move.w	#$80+((\3&$C000)>>14),(v_vdp_buffer2).w
+00000000                            		move.w	(v_vdp_buffer2).w,(a5)
+00000000                            		endm
+00000000                            
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; DMA copy data from 68K (ROM/RAM) to the CRAM
+00000000                            ; input: source, length, destination
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            writeCRAM:	macro
+00000000                            		lea	($C00004).l,a5
+00000000                            		move.l	#$94000000+(((\2>>1)&$FF00)<<8)+$9300+((\2>>1)&$FF),(a5)
+00000000                            		move.l	#$96000000+(((\1>>1)&$FF00)<<8)+$9500+((\1>>1)&$FF),(a5)
+00000000                            		move.w	#$9700+((((\1>>1)&$FF0000)>>16)&$7F),(a5)
+00000000                            		move.w	#$C000+(\3&$3FFF),(a5)
+00000000                            		move.w	#$80+((\3&$C000)>>14),(v_vdp_buffer2).w
+00000000                            		move.w	(v_vdp_buffer2).w,(a5)
+00000000                            		endm
+00000000                            
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; DMA fill VRAM with a value
+00000000                            ; input: value, length, destination
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            fillVRAM:	macro value,length,loc
+00000000                            		lea	($C00004).l,a5
+00000000                            		move.w	#$8F01,(a5)
+00000000                            		move.l	#$94000000+((length&$FF00)<<8)+$9300+(length&$FF),(a5)
+00000000                            		move.w	#$9780,(a5)
+00000000                            		move.l	#$40000080+((loc&$3FFF)<<16)+((loc&$C000)>>14),(a5)
+00000000                            		move.w	#value,($C00000).l
+00000000                            		endm
+00000000                            
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; Copy a tilemap from 68K (ROM/RAM) to the VRAM without using DMA
+00000000                            ; input: source, destination, width [cells], height [cells]
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            copyTilemap:	macro source,loc,width,height
+00000000                            		lea	(source).l,a1
+00000000                            		move.l	#$40000000+((loc&$3FFF)<<16)+((loc&$C000)>>14),d0
+00000000                            		moveq	#width,d1
+00000000                            		moveq	#height,d2
+00000000                            		bsr.w	TilemapToVRAM
+00000000                            		endm
+00000000                            
+00000000                            
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; check if object moves out of range
+00000000                            ; input: location to jump to if out of range, x-axis pos (obX(a0) by default)
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            obRange:	macro exit,pos
+00000000                            		if (narg=2)
+00000000                            		move.w	pos,d0		; get object position (if specified as not obX)
+00000000                            		else
+00000000                            		move.w	obX(a0),d0	; get object position
+00000000                            		endc
+00000000                            		andi.w	#$FF80,d0	; round down to nearest $80
+00000000                            		move.w	(v_screenposx).w,d1 ; get screen position
+00000000                            		subi.w	#128,d1
+00000000                            		andi.w	#$FF80,d1
+00000000                            		sub.w	d1,d0
+00000000                            		cmpi.w	#128+320+192,d0
+00000000                            		bhi.w	exit		; if object moves out of range, branch
+00000000                            		endm
+00000000                            
+00000000                            obRanges:	macro exit,pos
+00000000                            		if (narg=2)
+00000000                            		move.w	pos,d0		; get object position (if specified as not obX)
+00000000                            		else
+00000000                            		move.w	obX(a0),d0	; get object position
+00000000                            		endc
+00000000                            		andi.w	#$FF80,d0	; round down to nearest $80
+00000000                            		move.w	(v_screenposx).w,d1 ; get screen position
+00000000                            		subi.w	#128,d1
+00000000                            		andi.w	#$FF80,d1
+00000000                            		sub.w	d1,d0
+00000000                            		cmpi.w	#128+320+192,d0
+00000000                            		bhi.s	exit		; if object moves out of range, branch
+00000000                            		endm
+00000000                            
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; play a sound effect or music
+00000000                            ; input: track, terminate routine (leave blank to not terminate)
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            music:		macro track,terminate
+00000000                            		move.w	#track,d0
+00000000                            		if (narg=1)
+00000000                            		jsr	(PlaySound).l
+00000000                            		else
+00000000                            		jmp	(PlaySound).l
+00000000                            		endc
+00000000                            		endm
+00000000                            
+00000000                            sfx:		macro track,terminate
+00000000                            		move.w	#track,d0
+00000000                            		if (narg=1)
+00000000                            		jsr	(PlaySound_Special).l
+00000000                            		else
+00000000                            		jmp	(PlaySound_Special).l
+00000000                            		endc
+00000000                            		endm
+00000000                            
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            ; bankswitch between SRAM and ROM
+00000000                            ; (remember to enable SRAM in the header first!)
+00000000                            ; ---------------------------------------------------------------------------
+00000000                            
+00000000                            gotoSRAM:	macro
+00000000                            		move.b  #1,($A130F1).l
+00000000                            		endm
+00000000                            
+00000000                            gotoROM:	macro
+00000000                            		move.b  #0,($A130F1).l
+00000000                            		endm
+00000000                            		endm
+00000000                            ; ===========================================================================
+00000000                            
+00000000                            StartOfRom:
+00000000 00FF FE00 0000 0000 0000+  Vectors:	dc.l $FFFE00, EntryPoint, BusError, AddressError
+00000010 0000 0000 0000 0000 0000+  		dc.l IllegalInstr, ZeroDivide, ChkInstr, TrapvInstr
+00000020 0000 0000 0000 0000 0000+  		dc.l PrivilegeViol, Trace, Line1010Emu,	Line1111Emu
+00000030 0000 0000 0000 0000 0000+  		dc.l ErrorExcept, ErrorExcept, ErrorExcept, ErrorExcept
+00000040 0000 0000 0000 0000 0000+  		dc.l ErrorExcept, ErrorExcept, ErrorExcept, ErrorExcept
+00000050 0000 0000 0000 0000 0000+  		dc.l ErrorExcept, ErrorExcept, ErrorExcept, ErrorExcept
+00000060 0000 0000 0000 0000 0000+  		dc.l ErrorExcept, ErrorTrap, ErrorTrap,	ErrorTrap
+00000070 0000 0000 0000 0000 0000+  		dc.l HBlank, ErrorTrap, VBlank, ErrorTrap
+00000080 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
+00000090 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
+000000A0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
+000000B0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
+000000C0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
+000000D0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
+000000E0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
+000000F0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
+00000100 5345 4741 204D 4547 4120+  Console:	dc.b "SEGA MEGA DRIVE " ; Hardware system ID
+00000110 2843 2920 2020 2020 2020+  Date:		dc.b "(C)             +" ; Release date                    "
+00000121 484F 4D45 4252 4557 2054+  Title_Local:	dc.b "HOMEBREW TEMPLATE                               " ; Domestic name
+00000151 484F 4D45 4252 4557 2054+  Title_Int:	dc.b "HOMEBREW TEMPLATE                               " ; International name
+00000181 474D 2030 3030 3034 3034+  			dc.b "GM 00004049-00"
+0000018F                            		
+0000018F 0000                       Checksum:	dc.w 0
+00000191 4A20 2020 2020 2020 2020+  		dc.b "J               " ; I/O support
+000001A1 0000 0000                  RomStartLoc:	dc.l StartOfRom		; ROM start
+000001A5 0000 0000                  RomEndLoc:	dc.l EndOfRom-1		; ROM end
+000001A9 00FF 0000                  RamStartLoc:	dc.l $FF0000		; RAM start
+000001AD 00FF FFFF                  RamEndLoc:	dc.l $FFFFFF		; RAM end
+000001B1                            SRAMSupport:	
+000001B1 2020 2020                  		dc.l $20202020
+000001B5                            		
+000001B5 2020 2020                  		dc.l $20202020		; SRAM start ($200001)
+000001B9 2020 2020                  		dc.l $20202020		; SRAM end ($20xxxx)
+000001BD 2020 2020 2020 2020 2020+  Notes:		dc.b "                                                    "
+000001F1 4A55 4520 2020 2020 2020+  Region:		dc.b "JUE             " ; Region
+00000201                            
+00000201                            ; ===========================================================================
+00000201                            
+00000201                            ErrorTrap:
+00000202 004E 71                    		nop	
+00000204 4E71                       		nop	
+00000206 60F9                       		bra.s	ErrorTrap
+00000208                            ; ===========================================================================
+00000208                            
+00000208                            EntryPoint:
+00000208 4AB9 00A1 0008             		tst.l	($A10008).l	; test port A & B control registers
+0000020E 6600                       		bne.s	PortA_Ok
+00000210 4A79 00A1 000C             		tst.w	($A1000C).l	; test port C control register
+00000216                            	PortA_Ok:
+00000216 6600                       		bne.s	SkipSetup
+00000218                            
+00000218 4BFA 0000                  		lea	SetupValues(pc),a5
+0000021C 4C9D 00E0                  		movem.w	(a5)+,d5-d7
+00000220 4CDD 1F00                  		movem.l	(a5)+,a0-a4
+00000224 1029 EF01                  		move.b	-$10FF(a1),d0	; get hardware version (from $A10001)
+00000228 0200 000F                  		andi.b	#$F,d0
+0000022C 6700                       		beq.s	SkipSecurity
+0000022E 237C 5345 4741 2F00        		move.l	#'SEGA',$2F00(a1) ; move "SEGA" to TMSS register ($A14000)
+00000236                            
+00000236                            SkipSecurity:
+00000236 3014                       		move.w	(a4),d0
+00000238 7000                       		moveq	#0,d0
+0000023A 2C40                       		movea.l	d0,a6
+0000023C 4E66                       		move.l	a6,usp		; set usp to 0
+0000023E                            
+0000023E 7217                       		moveq	#$17,d1
+00000240                            VDPInitLoop:
+00000240 1A1D                       		move.b	(a5)+,d5	; add $8000 to value
+00000242 3885                       		move.w	d5,(a4)		; move value to	VDP register
+00000244 DA47                       		add.w	d7,d5		; next register
+00000246 51C9 FFF8                  		dbf	d1,VDPInitLoop
+0000024A 289D                       		move.l	(a5)+,(a4)
+0000024C 3680                       		move.w	d0,(a3)		; clear	the VRAM
+0000024E 3287                       		move.w	d7,(a1)		; stop the Z80
+00000250 3487                       		move.w	d7,(a2)		; reset	the Z80
+00000252                            
+00000252                            	WaitForZ80:
+00000252 0111                       		btst	d0,(a1)		; has the Z80 stopped?
+00000254                            
+00000254 7425                       		moveq	#$25,d2
+00000256                            Z80InitLoop:
+00000256 10DD                       		move.b	(a5)+,(a0)+
+00000258 51CA FFFC                  		dbf	d2,Z80InitLoop
+0000025C 3480                       		move.w	d0,(a2)
+0000025E 3280                       		move.w	d0,(a1)		; start	the Z80
+00000260 3487                       		move.w	d7,(a2)		; reset	the Z80
+00000262                            
+00000262                            ClrRAMLoop:
+00000262 2D00                       		move.l	d0,-(a6)
+00000264 51CE FFFC                  		dbf	d6,ClrRAMLoop	; clear	the entire RAM
+00000268 289D                       		move.l	(a5)+,(a4)	; set VDP display mode and increment
+0000026A 289D                       		move.l	(a5)+,(a4)	; set VDP to CRAM write
+0000026C                            
+0000026C 761F                       		moveq	#$1F,d3
+0000026E                            ClrCRAMLoop:
+0000026E 2680                       		move.l	d0,(a3)
+00000270 51CB FFFC                  		dbf	d3,ClrCRAMLoop	; clear	the CRAM
+00000274 289D                       		move.l	(a5)+,(a4)
+00000276                            
+00000276 7813                       		moveq	#$13,d4
+00000278                            ClrVSRAMLoop:
+00000278 2680                       		move.l	d0,(a3)
+0000027A 51CC FFFC                  		dbf	d4,ClrVSRAMLoop ; clear the VSRAM
+0000027E 7A03                       		moveq	#3,d5
+00000280                            
+00000280                            PSGInitLoop:
+00000280 175D 0011                  		move.b	(a5)+,$11(a3)	; reset	the PSG
+00000284 51CD FFFA                  		dbf	d5,PSGInitLoop
+00000288 3480                       		move.w	d0,(a2)
+0000028A 4CD6 7FFF                  		movem.l	(a6),d0-a6	; clear	all registers
+0000028E 46FC 2700                  		move	#$2700,sr	; set the sr
+00000292                            
+00000292                            SkipSetup:
+00000292 6000                       		bra.s	GameProgram	; begin game
+00000294                            
+00000294                            ; ===========================================================================
+00000294 8000                       SetupValues:	dc.w $8000		; VDP register start number
+00000296 3FFF                       		dc.w $3FFF		; size of RAM/4
+00000298 0100                       		dc.w $100		; VDP register diff
+0000029A                            
+0000029A 00A0 0000                  		dc.l $A00000		; start	of Z80 RAM
+0000029E 00A1 1100                  		dc.l $A11100		; Z80 bus request
+000002A2 00A1 1200                  		dc.l $A11200		; Z80 reset
+000002A6 00C0 0000                  		dc.l $C00000		; VDP data
+000002AA 00C0 0004                  		dc.l $C00004		; VDP control
+000002AE                            
+000002AE 04                         		dc.b 4			; VDP $80 - 8-colour mode
+000002AF 14                         		dc.b $14		; VDP $81 - Megadrive mode, DMA enable
+000002B0 30                         		dc.b ($C000>>10)	; VDP $82 - foreground nametable address
+000002B1 3C                         		dc.b ($F000>>10)	; VDP $83 - window nametable address
+000002B2 07                         		dc.b ($E000>>13)	; VDP $84 - background nametable address
+000002B3 6C                         		dc.b ($D800>>9)		; VDP $85 - sprite table address
+000002B4 00                         		dc.b 0			; VDP $86 - unused
+000002B5 00                         		dc.b 0			; VDP $87 - background colour
+000002B6 00                         		dc.b 0			; VDP $88 - unused
+000002B7 00                         		dc.b 0			; VDP $89 - unused
+000002B8 FF                         		dc.b 255		; VDP $8A - HBlank register
+000002B9 00                         		dc.b 0			; VDP $8B - full screen scroll
+000002BA 81                         		dc.b $81		; VDP $8C - 40 cell display
+000002BB 37                         		dc.b ($DC00>>10)	; VDP $8D - hscroll table address
+000002BC 00                         		dc.b 0			; VDP $8E - unused
+000002BD 01                         		dc.b 1			; VDP $8F - VDP increment
+000002BE 01                         		dc.b 1			; VDP $90 - 64 cell hscroll size
+000002BF 00                         		dc.b 0			; VDP $91 - window h position
+000002C0 00                         		dc.b 0			; VDP $92 - window v position
+000002C1 FFFF                       		dc.w $FFFF		; VDP $93/94 - DMA length
+000002C3 0000                       		dc.w 0			; VDP $95/96 - DMA source
+000002C5 80                         		dc.b $80		; VDP $97 - DMA fill VRAM
+000002C6 4000 0080                  		dc.l $40000080		; VRAM address 0
+000002CA                            
+000002CA AF01 D91F 1127 0021 2600+  		dc.b $AF, 1, $D9, $1F, $11, $27, 0, $21, $26, 0, $F9, $77 ; Z80	instructions
+000002D6 EDB0 DDE1 FDE1 ED47 ED4F   		dc.b $ED, $B0, $DD, $E1, $FD, $E1, $ED,	$47, $ED, $4F
+000002E0 D1E1 F108 D9C1 D1E1 F1F9+  		dc.b $D1, $E1, $F1, 8, $D9, $C1, $D1, $E1, $F1,	$F9, $F3
+000002EB ED56 36E9 E9               		dc.b $ED, $56, $36, $E9, $E9
+000002F0                            
+000002F0 8104                       		dc.w $8104		; VDP display mode
+000002F2 8F02                       		dc.w $8F02		; VDP increment
+000002F4 C000 0000                  		dc.l $C0000000		; CRAM write mode
+000002F8 4000 0010                  		dc.l $40000010		; VSRAM address 0
+000002FC                            
+000002FC 9FBF DFFF                  		dc.b $9F, $BF, $DF, $FF	; values for PSG channel volumes
+00000300                            ; ===========================================================================
+00000300                            
+00000300                            GameProgram:
+00000300 4A79 00C0 0004             		tst.w	($C00004).l
+00000306 0839 0006 00A1 000D        		btst	#6,($A1000D).l
+0000030E 6700                       		beq.s	CheckSumCheck
+00000310 0CB8 696E 6974 FFFC        		cmpi.l	#'init',(v_init).w ; has checksum routine already run?
+00000318 6700 0000                  		beq.w	GameInit	; if yes, branch
+0000031C                            
+0000031C                            CheckSumCheck:
+0000031C                            
+0000031C 6000                       		bra.s	CheckSumOk
+0000031E 207C 0000 0201             		movea.l	#ErrorTrap,a0	; start	checking bytes after the header	($200)
+00000324 227C 0000 01A5             		movea.l	#RomEndLoc,a1	; stop at end of ROM
+0000032A 2011                       		move.l	(a1),d0
+0000032C 7200                       		moveq	#0,d1
+0000032E                            
+0000032E                            	@loop:
+0000032E D258                       		add.w	(a0)+,d1
+00000330 B088                       		cmp.l	a0,d0
+00000332 64FA                       		bcc.s	@loop
+00000334 227C 0000 018F             		movea.l	#Checksum,a1	; read the checksum
+0000033A B251                       		cmp.w	(a1),d1		; compare checksum in header to ROM
+0000033C 6600 0000                  		bne.w	CheckSumError	; if they don't match, branch
+00000340                            
+00000340                            	CheckSumOk:
+00000340 4DF8 FE00                  		lea	($FFFFFE00).w,a6
+00000344 7E00                       		moveq	#0,d7
+00000346 3C3C 007F                  		move.w	#$7F,d6
+0000034A                            	@clearRAM:
+0000034A 2CC7                       		move.l	d7,(a6)+
+0000034C 51CE FFFC                  		dbf	d6,@clearRAM	; clear RAM ($FE00-$FFFF)
+00000350                            
+00000350 1039 00A1 0001             		move.b	($A10001).l,d0
+00000356 0200 00C0                  		andi.b	#$C0,d0
+0000035A 11C0 FFF8                  		move.b	d0,(v_megadrive).w ; get region setting
+0000035E                            		
+0000035E                            
+0000035E                            GameInit:
+0000035E 4DF9 00FF 0000             		lea	($FF0000).l,a6
+00000364 7E00                       		moveq	#0,d7
+00000366 3C3C 3F7F                  		move.w	#$3F7F,d6
+0000036A                            	@clearRAM:
+0000036A 2CC7                       		move.l	d7,(a6)+
+0000036C 51CE FFFC                  		dbf	d6,@clearRAM	; clear RAM ($0000-$FDFF)
+00000370                            
+00000370 6100 0000                  		bsr.w	VDPSetupGame
+00000374 6100 0000                  		bsr.w	JoypadInit
+00000378 11FC 0000 F600             		move.b	#id_Gamemode01,(v_gamemode).w ; set Game Mode to Sega Screen
+0000037E                            
+0000037E                            MainGameLoop:
+0000037E 1038 F600                  		move.b	(v_gamemode).w,d0 ; load Game Mode
+00000382 0240 007F                  		andi.w	#$7F,d0  ; 7F for now
+00000386 4EBB 0000                  		jsr	GameModeArray(pc,d0.w) ; jump to apt location in ROM
+0000038A 60F2                       		bra.s	MainGameLoop
+0000038C                            ; ===========================================================================
+0000038C                            ; ---------------------------------------------------------------------------
+0000038C                            ; Main game mode array
+0000038C                            ; ---------------------------------------------------------------------------
+0000038C                            
+0000038C                            GameModeArray:
+0000038C 6000 0000                  ptr_GM_Gamemode01:	bra.w	GM_Gamemode01		; Gamemode 01
+00000390 4E75                       		rts	
+00000392                            ; ===========================================================================
+00000392                            
+00000392                            CheckSumError:
+00000392 6100 0000                  		bsr.w	VDPSetupGame
+00000396 23FC C000 0000 00C0 0004   		move.l	#$C0000000,($C00004).l ; set VDP to CRAM write
+000003A0 7E3F                       		moveq	#$3F,d7
+000003A2                            
+000003A2                            	@fillred:
+000003A2 33FC 000E 00C0 0000        		move.w	#cRed,($C00000).l ; fill palette with red
+000003AA 51CF FFF6                  		dbf	d7,@fillred	; repeat $3F more times
+000003AE                            
+000003AE                            	@endlessloop:
+000003AE 60FE                       		bra.s	@endlessloop
+000003B0                            ; ===========================================================================
+000003B0                            
+000003B0                            BusError:
+000003B0 11FC 0002 FC44             		move.b	#2,(v_errortype).w
+000003B6 6000                       		bra.s	loc_43A
+000003B8                            
+000003B8                            AddressError:
+000003B8 11FC 0004 FC44             		move.b	#4,(v_errortype).w
+000003BE 6000                       		bra.s	loc_43A
+000003C0                            
+000003C0                            IllegalInstr:
+000003C0 11FC 0006 FC44             		move.b	#6,(v_errortype).w
+000003C6 54AF 0002                  		addq.l	#2,2(sp)
+000003CA 6000                       		bra.s	loc_462
+000003CC                            
+000003CC                            ZeroDivide:
+000003CC 11FC 0008 FC44             		move.b	#8,(v_errortype).w
+000003D2 6000                       		bra.s	loc_462
+000003D4                            
+000003D4                            ChkInstr:
+000003D4 11FC 000A FC44             		move.b	#$A,(v_errortype).w
+000003DA 6000                       		bra.s	loc_462
+000003DC                            
+000003DC                            TrapvInstr:
+000003DC 11FC 000C FC44             		move.b	#$C,(v_errortype).w
+000003E2 6000                       		bra.s	loc_462
+000003E4                            
+000003E4                            PrivilegeViol:
+000003E4 11FC 000E FC44             		move.b	#$E,(v_errortype).w
+000003EA 6000                       		bra.s	loc_462
+000003EC                            
+000003EC                            Trace:
+000003EC 11FC 0010 FC44             		move.b	#$10,(v_errortype).w
+000003F2 6000                       		bra.s	loc_462
+000003F4                            
+000003F4                            Line1010Emu:
+000003F4 11FC 0012 FC44             		move.b	#$12,(v_errortype).w
+000003FA 54AF 0002                  		addq.l	#2,2(sp)
+000003FE 6000                       		bra.s	loc_462
+00000400                            
+00000400                            Line1111Emu:
+00000400 11FC 0014 FC44             		move.b	#$14,(v_errortype).w
+00000406 54AF 0002                  		addq.l	#2,2(sp)
+0000040A 6000                       		bra.s	loc_462
+0000040C                            
+0000040C                            ErrorExcept:
+0000040C 11FC 0000 FC44             		move.b	#0,(v_errortype).w
+00000412 6000                       		bra.s	loc_462
+00000414                            ; ===========================================================================
+00000414                            
+00000414                            loc_43A:
+00000414 46FC 2700                  		move	#$2700,sr
+00000418 544F                       		addq.w	#2,sp
+0000041A 21DF FC40                  		move.l	(sp)+,(v_spbuffer).w
+0000041E 544F                       		addq.w	#2,sp
+00000420 48F8 FFFF FC00             		movem.l	d0-a7,(v_regbuffer).w
+00000426 6100 0000                  		bsr.w	ShowErrorMessage
+0000042A 202F 0002                  		move.l	2(sp),d0
+0000042E 6100 0000                  		bsr.w	ShowErrorValue
+00000432 2038 FC40                  		move.l	(v_spbuffer).w,d0
+00000436 6100 0000                  		bsr.w	ShowErrorValue
+0000043A 6000                       		bra.s	loc_478
+0000043C                            ; ===========================================================================
+0000043C                            
+0000043C                            loc_462:
+0000043C 46FC 2700                  		move	#$2700,sr
+00000440 48F8 FFFF FC00             		movem.l	d0-a7,(v_regbuffer).w
+00000446 6100 0000                  		bsr.w	ShowErrorMessage
+0000044A 202F 0002                  		move.l	2(sp),d0
+0000044E 6100 0000                  		bsr.w	ShowErrorValue
+00000452                            
+00000452                            loc_478:
+00000452 6100 0000                  		bsr.w	ErrorWaitForC
+00000456 4CF8 FFFF FC00             		movem.l	(v_regbuffer).w,d0-a7
+0000045C 46FC 2300                  		move	#$2300,sr
+00000460 4E73                       		rte	
+00000462                            
+00000462                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000462                            
+00000462                            
+00000462                            ShowErrorMessage:
+00000462 4DF9 00C0 0000             		lea	($C00000).l,a6
+00000472 41F9 0000 0000             		lea	(Art_Text).l,a0
+00000478 323C 027F                  		move.w	#$27F,d1
+0000047C                            	@loadgfx:
+0000047C 3C98                       		move.w	(a0)+,(a6)
+0000047E 51C9 FFFC                  		dbf	d1,@loadgfx
+00000482                            
+00000482 7000                       		moveq	#0,d0		; clear	d0
+00000484 1038 FC44                  		move.b	(v_errortype).w,d0 ; load error code
+00000488 303B 0000                  		move.w	ErrorText(pc,d0.w),d0
+0000048C 41FB 0000                  		lea	ErrorText(pc,d0.w),a0
+0000049A 7212                       		moveq	#$12,d1		; number of characters (minus 1)
+0000049C                            
+0000049C                            	@showchars:
+0000049C 7000                       		moveq	#0,d0
+0000049E 1018                       		move.b	(a0)+,d0
+000004A0 0640 0790                  		addi.w	#$790,d0
+000004A4 3C80                       		move.w	d0,(a6)
+000004A6 51C9 FFF4                  		dbf	d1,@showchars	; repeat for number of characters
+000004AA 4E75                       		rts	
+000004AC                            ; End of function ShowErrorMessage
+000004AC                            
+000004AC                            ; ===========================================================================
+000004AC 0000 0000                  ErrorText:	dc.w @exception-ErrorText, @bus-ErrorText
+000004B0 0000 0000                  		dc.w @address-ErrorText, @illinstruct-ErrorText
+000004B4 0000 0000                  		dc.w @zerodivide-ErrorText, @chkinstruct-ErrorText
+000004B8 0000 0000                  		dc.w @trapv-ErrorText, @privilege-ErrorText
+000004BC 0000 0000                  		dc.w @trace-ErrorText, @line1010-ErrorText
+000004C0 0000                       		dc.w @line1111-ErrorText
+000004C2 4552 524F 5220 4558 4345+  @exception:	dc.b "ERROR EXCEPTION    "
+000004D5 4255 5320 4552 524F 5220+  @bus:		dc.b "BUS ERROR          "
+000004E8 4144 4452 4553 5320 4552+  @address:	dc.b "ADDRESS ERROR      "
+000004FB 494C 4C45 4741 4C20 494E+  @illinstruct:	dc.b "ILLEGAL INSTRUCTION"
+0000050E 4045 524F 2044 4956 4944+  @zerodivide:	dc.b "@ERO DIVIDE        "
+00000521 4348 4B20 494E 5354 5255+  @chkinstruct:	dc.b "CHK INSTRUCTION    "
+00000534 5452 4150 5620 494E 5354+  @trapv:		dc.b "TRAPV INSTRUCTION  "
+00000547 5052 4956 494C 4547 4520+  @privilege:	dc.b "PRIVILEGE VIOLATION"
+0000055A 5452 4143 4520 2020 2020+  @trace:		dc.b "TRACE              "
+0000056D 4C49 4E45 2031 3031 3020+  @line1010:	dc.b "LINE 1010 EMULATOR "
+00000580 4C49 4E45 2031 3131 3120+  @line1111:	dc.b "LINE 1111 EMULATOR "
+00000594 00                         		even
+00000594                            
+00000594                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000594                            
+00000594                            
+00000594                            ShowErrorValue:
+00000594 3CBC 07CA                  		move.w	#$7CA,(a6)	; display "$" symbol
+00000598 7407                       		moveq	#7,d2
+0000059A                            
+0000059A                            	@loop:
+0000059A E998                       		rol.l	#4,d0
+0000059C 51CA FFFC                  		dbf	d2,@loop
+000005A0 4E75                       		rts	
+000005A2                            ; End of function ShowErrorValue
+000005A2                            
+000005A2                            Art_Text: incbin "binary-files/uncompressed/text.bin"
+00000AC2                            
+00000AC2                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000AC2                            
+00000AC2                            
+00000AC2 3200                       		move.w	d0,d1
+00000AC4 0241 000F                  		andi.w	#$F,d1
+00000AC8 0C41 000A                  		cmpi.w	#$A,d1
+00000ACC 6500                       		bcs.s	@chars0to9
+00000ACE 5E41                       		addq.w	#7,d1		; add 7 for characters A-F
+00000AD0                            
+00000AD0                            	@chars0to9:
+00000AD0 0641 07C0                  		addi.w	#$7C0,d1
+00000AD4 3C81                       		move.w	d1,(a6)
+00000AD6 4E75                       		rts	
+00000AD8                            ; End of function sub_5CA
+00000AD8                            
+00000AD8                            
+00000AD8                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000AD8                            
+00000AD8                            
+00000AD8                            ErrorWaitForC:				; XREF: loc_478
+00000AD8 6100 0000                  		bsr.w	ReadJoypads
+00000ADC 0C38 0020 F605             		cmpi.b	#btnC,(v_jpadpress1).w ; is button C pressed?
+00000AE2 6600 FFF4                  		bne.w	ErrorWaitForC	; if not, branch
+00000AE6 4E75                       		rts	
+00000AE8                            ; End of function ErrorWaitForC
+00000AE8                            
+00000AE8                            ; ===========================================================================
+00000AE8                            
+00000AE8                            ; ===========================================================================
+00000AE8                            ; ---------------------------------------------------------------------------
+00000AE8                            ; Vertical interrupt
+00000AE8                            ; ---------------------------------------------------------------------------
+00000AE8                            
+00000AE8                            VBlank:					; XREF: Vectors
+00000AE8 48E7 FFFE                  		movem.l	d0-a6,-(sp)
+00000AEC 4A38 F62A                  		tst.b	(v_vbla_routine).w
+00000AF0 3039 00C0 0004             		move.w	($C00004).l,d0
+00000AF6 23FC 4000 0010 00C0 0004   		move.l	#$40000010,($C00004).l
+00000B00 23F8 F616 00C0 0000        		move.l	(v_scrposy_dup).w,($C00000).l ; send screen y-axis pos. to VSRAM
+00000B08 0838 0006 FFF8             		btst	#6,(v_megadrive).w ; is Megadrive PAL?
+00000B0E 6700                       		beq.s	VBla_NotPAL	; if not, branch
+00000B10                            
+00000B10 303C 0700                  		move.w	#$700,d0
+00000B14                            	VBla_WaitPAL:
+00000B14 51C8 FFFE                  		dbf	d0,VBla_WaitPAL
+00000B18                            
+00000B18                            	VBla_NotPAL:
+00000B18 1038 F62A                  		move.b	(v_vbla_routine).w,d0
+00000B1C 11FC 0000 F62A             		move.b	#0,(v_vbla_routine).w
+00000B22 31FC 0001 F644             		move.w	#1,(f_hbla_pal).w
+00000B28 0240 003E                  		andi.w	#$3E,d0
+00000B2C                            
+00000B2C                            VBla_Music:				; XREF: VBla_00
+00000B2C                            
+00000B2C                            VBla_Exit:				; XREF: VBla_08
+00000B2C 52B8 FE0C                  		addq.l	#1,(v_vbla_count).w
+00000B30 4CDF 7FFF                  		movem.l	(sp)+,d0-a6
+00000B34 4E73                       		rte	
+00000B36                            ; ===========================================================================
+00000B36                            ; ===========================================================================
+00000B36                            
+00000B36                            
+00000B36                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000B36                            
+00000B36                            
+00000B36                            sub_106E:				; XREF: VBla_02; et al
+00000B36                            		
+00000B36                            		
+00000B36 6100 0000                  		bsr.w	ReadJoypads
+00000B3A 4A38 F64E                  		tst.b	(f_wtr_state).w ; is water above top of screen?
+00000B3E 6600                       		bne.s	@waterabove	; if yes, branch
+00000B40 4BF9 00C0 0004 2ABC 9400+  		writeCRAM	v_pal1_wat,$80,0
+00000B64 6000                       		bra.s	@waterbelow
+00000B66                            
+00000B66                            	@waterabove:
+00000B66 4BF9 00C0 0004 2ABC 9400+  		writeCRAM	v_pal0_dry,$80,0
+00000B8A                            
+00000B8A                            	@waterbelow:
+00000B8A 4BF9 00C0 0004 2ABC 9401+  		writeVRAM	v_sprites,$280,vram_sprites
+00000BAE 4BF9 00C0 0004 2ABC 9401+  		writeVRAM	v_scrolltable,$380,vram_hscroll
+00000BD2                            		
+00000BD2 4E75                       		rts	
+00000BD4                            ; End of function sub_106E
+00000BD4                            
+00000BD4                            ; ---------------------------------------------------------------------------
+00000BD4                            ; Horizontal interrupt
+00000BD4                            ; ---------------------------------------------------------------------------
+00000BD4                            
+00000BD4                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000BD4                            
+00000BD4                            
+00000BD4                            HBlank:
+00000BD4 46FC 2700                  		move	#$2700,sr
+00000BD8 4A78 F644                  		tst.w	(f_hbla_pal).w	; is palette set to change?
+00000BDC 31FC 0000 F644             		move.w	#0,(f_hbla_pal).w
+00000BE2 48E7 00C0                  		movem.l	a0-a1,-(sp)
+00000BE6 43F9 00C0 0000             		lea	($C00000).l,a1
+00000BEC 41F8 FA80                  		lea	(v_pal0_dry).w,a0 ; get palette from RAM
+00000BF0 237C C000 0000 0004        		move.l	#$C0000000,4(a1) ; set VDP to CRAM write
+00000BF8 2298                       		move.l	(a0)+,(a1)	; move palette to CRAM
+00000BFA 2298                       		move.l	(a0)+,(a1)
+00000BFC 2298                       		move.l	(a0)+,(a1)
+00000BFE 2298                       		move.l	(a0)+,(a1)
+00000C00 2298                       		move.l	(a0)+,(a1)
+00000C02 2298                       		move.l	(a0)+,(a1)
+00000C04 2298                       		move.l	(a0)+,(a1)
+00000C06 2298                       		move.l	(a0)+,(a1)
+00000C08 2298                       		move.l	(a0)+,(a1)
+00000C0A 2298                       		move.l	(a0)+,(a1)
+00000C0C 2298                       		move.l	(a0)+,(a1)
+00000C0E 2298                       		move.l	(a0)+,(a1)
+00000C10 2298                       		move.l	(a0)+,(a1)
+00000C12 2298                       		move.l	(a0)+,(a1)
+00000C14 2298                       		move.l	(a0)+,(a1)
+00000C16 2298                       		move.l	(a0)+,(a1)
+00000C18 2298                       		move.l	(a0)+,(a1)
+00000C1A 2298                       		move.l	(a0)+,(a1)
+00000C1C 2298                       		move.l	(a0)+,(a1)
+00000C1E 2298                       		move.l	(a0)+,(a1)
+00000C20 2298                       		move.l	(a0)+,(a1)
+00000C22 2298                       		move.l	(a0)+,(a1)
+00000C24 2298                       		move.l	(a0)+,(a1)
+00000C26 2298                       		move.l	(a0)+,(a1)
+00000C28 2298                       		move.l	(a0)+,(a1)
+00000C2A 2298                       		move.l	(a0)+,(a1)
+00000C2C 2298                       		move.l	(a0)+,(a1)
+00000C2E 2298                       		move.l	(a0)+,(a1)
+00000C30 2298                       		move.l	(a0)+,(a1)
+00000C32 2298                       		move.l	(a0)+,(a1)
+00000C34 2298                       		move.l	(a0)+,(a1)
+00000C36 2298                       		move.l	(a0)+,(a1)
+00000C38 337C 8ADF 0004             		move.w	#$8A00+223,4(a1) ; reset HBlank register
+00000C3E 4CDF 0300                  		movem.l	(sp)+,a0-a1
+00000C42 4A38 F64F                  		tst.b	($FFFFF64F).w
+00000C46 6600                       		bne.s	loc_119E
+00000C48                            
+00000C48                            	@nochg:
+00000C48 4E73                       		rte	
+00000C4A                            ; ===========================================================================
+00000C4A                            
+00000C4A                            loc_119E:
+00000C4A 4238 F64F                  		clr.b	($FFFFF64F).w
+00000C4E 48E7 FFFE                  		movem.l	d0-a6,-(sp)
+00000C52 4CDF 7FFF                  		movem.l	(sp)+,d0-a6
+00000C56 4E73                       		rte	
+00000C58                            ; End of function HBlank
+00000C58                            
+00000C58                            ; ---------------------------------------------------------------------------
+00000C58                            ; Subroutine to	initialise joypads
+00000C58                            ; ---------------------------------------------------------------------------
+00000C58                            
+00000C58                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000C58                            
+00000C58                            
+00000C58                            JoypadInit:				; XREF: GameClrRAM
+00000C58                            		
+00000C58                            		
+00000C58 7040                       		moveq	#$40,d0
+00000C5A 13C0 00A1 0009             		move.b	d0,($A10009).l	; init port 1 (joypad 1)
+00000C60 13C0 00A1 000B             		move.b	d0,($A1000B).l	; init port 2 (joypad 2)
+00000C66 13C0 00A1 000D             		move.b	d0,($A1000D).l	; init port 3 (expansion)
+00000C6C                            		
+00000C6C 4E75                       		rts	
+00000C6E                            ; End of function JoypadInit
+00000C6E                            
+00000C6E                            ; ---------------------------------------------------------------------------
+00000C6E                            ; Subroutine to	read joypad input, and send it to the RAM
+00000C6E                            ; ---------------------------------------------------------------------------
+00000C6E                            
+00000C6E                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000C6E                            
+00000C6E                            
+00000C6E                            ReadJoypads:				; XREF: VBlank, HBlank
+00000C6E 41F8 F604                  		lea	(v_jpadhold1).w,a0 ; address where joypad states are written
+00000C72 43F9 00A1 0003             		lea	($A10003).l,a1	; first	joypad port
+00000C78 6100                       		bsr.s	@read		; do the first joypad
+00000C7A 5449                       		addq.w	#2,a1		; do the second	joypad
+00000C7C                            
+00000C7C                            	@read:
+00000C7C 12BC 0000                  		move.b	#0,(a1)
+00000C80 4E71                       		nop	
+00000C82 4E71                       		nop	
+00000C84 1011                       		move.b	(a1),d0
+00000C86 E508                       		lsl.b	#2,d0
+00000C88 0200 00C0                  		andi.b	#$C0,d0
+00000C8C 12BC 0040                  		move.b	#$40,(a1)
+00000C90 4E71                       		nop	
+00000C92 4E71                       		nop	
+00000C94 1211                       		move.b	(a1),d1
+00000C96 0201 003F                  		andi.b	#$3F,d1
+00000C9A 8001                       		or.b	d1,d0
+00000C9C 4600                       		not.b	d0
+00000C9E 1210                       		move.b	(a0),d1
+00000CA0 B101                       		eor.b	d0,d1
+00000CA2 10C0                       		move.b	d0,(a0)+
+00000CA4 C200                       		and.b	d0,d1
+00000CA6 10C1                       		move.b	d1,(a0)+
+00000CA8 4E75                       		rts	
+00000CAA                            ; End of function ReadJoypads
+00000CAA                            
+00000CAA                            
+00000CAA                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000CAA                            
+00000CAA                            
+00000CAA                            VDPSetupGame:				; XREF: GameClrRAM; ChecksumError
+00000CAA 41F9 00C0 0004             		lea	($C00004).l,a0
+00000CB0 43F9 00C0 0000             		lea	($C00000).l,a1
+00000CB6 45F9 0000 0000             		lea	(VDPSetupArray).l,a2
+00000CBC 7E12                       		moveq	#$12,d7
+00000CBE                            
+00000CBE                            	@setreg:
+00000CBE 309A                       		move.w	(a2)+,(a0)
+00000CC0 51CF FFFC                  		dbf	d7,@setreg	; set the VDP registers
+00000CC4                            
+00000CC4 3039 0000 0000             		move.w	(VDPSetupArray+2).l,d0
+00000CCA 31C0 F60C                  		move.w	d0,(v_vdp_buffer1).w
+00000CCE 31FC 8ADF F624             		move.w	#$8A00+223,(v_hbla_hreg).w
+00000CD4 7000                       		moveq	#0,d0
+00000CD6 23FC C000 0000 00C0 0004   		move.l	#$C0000000,($C00004).l ; set VDP to CRAM write
+00000CE0 3E3C 003F                  		move.w	#$3F,d7
+00000CE4                            
+00000CE4                            	@clrCRAM:
+00000CE4 3280                       		move.w	d0,(a1)
+00000CE6 51CF FFFC                  		dbf	d7,@clrCRAM	; clear	the CRAM
+00000CEA                            
+00000CEA 42B8 F616                  		clr.l	(v_scrposy_dup).w
+00000CEE 42B8 F61A                  		clr.l	(v_scrposx_dup).w
+00000CF2 2F01                       		move.l	d1,-(sp)
+00000CF4 4BF9 00C0 0004 3ABC 8F01+  		fillVRAM	0,$FFFF,0
+00000D16                            
+00000D16                            	@waitforDMA:
+00000D16 3215                       		move.w	(a5),d1
+00000D18 0801 0001                  		btst	#1,d1		; is DMA (fillVRAM) still running?
+00000D1C 66F8                       		bne.s	@waitforDMA	; if yes, branch
+00000D1E                            
+00000D1E 3ABC 8F02                  		move.w	#$8F02,(a5)	; set VDP increment size
+00000D22 221F                       		move.l	(sp)+,d1
+00000D24 4E75                       		rts	
+00000D26                            ; End of function VDPSetupGame
+00000D26                            
+00000D26                            ; ===========================================================================
+00000D26 8004                       VDPSetupArray:	dc.w $8004		; 8-colour mode
+00000D28 8134                       		dc.w $8134		; enable V.interrupts, enable DMA
+00000D2A 8230                       		dc.w $8200+(vram_fg>>10) ; set foreground nametable address
+00000D2C 8328                       		dc.w $8300+($A000>>10)	; set window nametable address
+00000D2E 8407                       		dc.w $8400+(vram_bg>>13) ; set background nametable address
+00000D30 857C                       		dc.w $8500+(vram_sprites>>9) ; set sprite table address
+00000D32 8600                       		dc.w $8600		; unused
+00000D34 8700                       		dc.w $8700		; set background colour (palette entry 0)
+00000D36 8800                       		dc.w $8800		; unused
+00000D38 8900                       		dc.w $8900		; unused
+00000D3A 8A00                       		dc.w $8A00		; default H.interrupt register
+00000D3C 8B00                       		dc.w $8B00		; full-screen vertical scrolling
+00000D3E 8C81                       		dc.w $8C81		; 40-cell display mode
+00000D40 8D3F                       		dc.w $8D00+(vram_hscroll>>10) ; set background hscroll address
+00000D42 8E00                       		dc.w $8E00		; unused
+00000D44 8F02                       		dc.w $8F02		; set VDP increment size
+00000D46 9001                       		dc.w $9001		; 64-cell hscroll size
+00000D48 9100                       		dc.w $9100		; window horizontal position
+00000D4A 9200                       		dc.w $9200		; window vertical position
+00000D4C                            
+00000D4C                            ; ---------------------------------------------------------------------------
+00000D4C                            ; Subroutine to	clear the screen
+00000D4C                            ; ---------------------------------------------------------------------------
+00000D4C                            
+00000D4C                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000D4C                            
+00000D4C                            
+00000D4C                            ClearScreen:
+00000D4C 4BF9 00C0 0004 3ABC 8F01+  		fillVRAM	0,$FFF,vram_fg ; clear foreground namespace
+00000D6E                            
+00000D6E                            	@wait1:
+00000D6E 3215                       		move.w	(a5),d1
+00000D70 0801 0001                  		btst	#1,d1
+00000D74 66F8                       		bne.s	@wait1
+00000D76                            
+00000D76 3ABC 8F02                  		move.w	#$8F02,(a5)
+00000D7A 4BF9 00C0 0004 3ABC 8F01+  		fillVRAM	0,$FFF,vram_bg ; clear background namespace
+00000D9C                            
+00000D9C                            	@wait2:
+00000D9C 3215                       		move.w	(a5),d1
+00000D9E 0801 0001                  		btst	#1,d1
+00000DA2 66F8                       		bne.s	@wait2
+00000DA4                            
+00000DA4 3ABC 8F02                  		move.w	#$8F02,(a5)
+00000DA8 42B8 F616                  		clr.l	(v_scrposy_dup).w
+00000DAC 42B8 F61A                  		clr.l	(v_scrposx_dup).w
+00000DB0                            		
+00000DB0                            
+00000DB0 43F8 F800                  		lea	(v_sprites).w,a1
+00000DB4 7000                       		moveq	#0,d0
+00000DB6 323C 00A0                  		move.w	#$A0,d1
+00000DBA                            
+00000DBA                            	@clearsprites:
+00000DBA 22C0                       		move.l	d0,(a1)+
+00000DBC 51C9 FFFC                  		dbf	d1,@clearsprites ; clear sprite table (in RAM)
+00000DC0                            
+00000DC0 43F8 CC00                  		lea	(v_scrolltable).w,a1
+00000DC4 7000                       		moveq	#0,d0
+00000DC6 323C 0100                  		move.w	#$100,d1
+00000DCA                            
+00000DCA                            	@clearhscroll:
+00000DCA 22C0                       		move.l	d0,(a1)+
+00000DCC 51C9 FFFC                  		dbf	d1,@clearhscroll ; clear hscroll table (in RAM)
+00000DD0 4E75                       		rts	
+00000DD2                            ; End of function ClearScreen
+00000DD2                            
+00000DD2                            ; ---------------------------------------------------------------------------
+00000DD2                            ; Subroutine to	load the sound driver
+00000DD2                            ; ---------------------------------------------------------------------------
+00000DD2                            
+00000DD2                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000DD2                            
+00000DD2                            ; ---------------------------------------------------------------------------
+00000DD2                            ; Subroutine to	copy a tile map from RAM to VRAM namespace
+00000DD2                            
+00000DD2                            ; input:
+00000DD2                            ;	a1 = tile map address
+00000DD2                            ;	d0 = VRAM address
+00000DD2                            ;	d1 = width (cells)
+00000DD2                            ;	d2 = height (cells)
+00000DD2                            ; ---------------------------------------------------------------------------
+00000DD2                            
+00000DD2                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000DD2                            
+00000DD2                            
+00000DD2                            TilemapToVRAM:				; XREF: GM_Sega; GM_Title; SS_BGLoad
+00000DD2 4DF9 00C0 0000             		lea	($C00000).l,a6
+00000DD8 283C 0080 0000             		move.l	#$800000,d4
+00000DDE                            
+00000DDE                            	Tilemap_Line:
+00000DDE 2D40 0004                  		move.l	d0,4(a6)
+00000DE2 3601                       		move.w	d1,d3
+00000DE4                            
+00000DE4                            	Tilemap_Cell:
+00000DE4 3C99                       		move.w	(a1)+,(a6)	; write value to namespace
+00000DE6 51CB FFFC                  		dbf	d3,Tilemap_Cell
+00000DEA D084                       		add.l	d4,d0		; goto next line
+00000DEC 51CA FFF0                  		dbf	d2,Tilemap_Line
+00000DF0 4E75                       		rts	
+00000DF2                            ; End of function TilemapToVRAM
+00000DF2                            
+00000DF2                            ; ---------------------------------------------------------------------------
+00000DF2                            ; Subroutines to load pattern load cues
+00000DF2                            
+00000DF2                            ; input:
+00000DF2                            ;	d0 = pattern load cue number
+00000DF2                            ; ---------------------------------------------------------------------------
+00000DF2                            
+00000DF2                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000DF2                            
+00000DF2                            
+00000DF2                            AddPLC:
+00000DF2 48E7 0060                  		movem.l	a1-a2,-(sp)
+00000DF6 D040                       		add.w	d0,d0
+00000DF8 3031 0000                  		move.w	(a1,d0.w),d0
+00000DFC 43F1 0000                  		lea	(a1,d0.w),a1	; jump to relevant PLC
+00000E00 45F8 F680                  		lea	(v_plc_buffer).w,a2 ; PLC buffer space
+00000E04                            
+00000E04                            	@findspace:
+00000E04 4A92                       		tst.l	(a2)		; is space available in RAM?
+00000E06 6700                       		beq.s	@copytoRAM	; if yes, branch
+00000E08 5C4A                       		addq.w	#6,a2		; if not, try next space
+00000E0A 60F8                       		bra.s	@findspace
+00000E0C                            ; ===========================================================================
+00000E0C                            
+00000E0C                            @copytoRAM:
+00000E0C 3019                       		move.w	(a1)+,d0	; get length of PLC
+00000E0E 6B00                       		bmi.s	@skip
+00000E10                            
+00000E10                            	@loop:
+00000E10 24D9                       		move.l	(a1)+,(a2)+
+00000E12 34D9                       		move.w	(a1)+,(a2)+	; copy PLC to RAM
+00000E14 51C8 FFFA                  		dbf	d0,@loop	; repeat for length of PLC
+00000E18                            
+00000E18                            	@skip:
+00000E18 4CDF 0600                  		movem.l	(sp)+,a1-a2
+00000E1C 4E75                       		rts	
+00000E1E                            ; End of function AddPLC
+00000E1E                            
+00000E1E                            
+00000E1E                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000E1E                            
+00000E1E                            
+00000E1E                            NewPLC:
+00000E1E 48E7 0060                  		movem.l	a1-a2,-(sp)
+00000E22 D040                       		add.w	d0,d0
+00000E24 3031 0000                  		move.w	(a1,d0.w),d0
+00000E28 43F1 0000                  		lea	(a1,d0.w),a1	; jump to relevant PLC
+00000E2C 6100                       		bsr.s	ClearPLC	; erase any data in PLC buffer space
+00000E2E 45F8 F680                  		lea	(v_plc_buffer).w,a2
+00000E32 3019                       		move.w	(a1)+,d0	; get length of PLC
+00000E34 6B00                       		bmi.s	@skip
+00000E36                            
+00000E36                            	@loop:
+00000E36 24D9                       		move.l	(a1)+,(a2)+
+00000E38 34D9                       		move.w	(a1)+,(a2)+	; copy PLC to RAM
+00000E3A 51C8 FFFA                  		dbf	d0,@loop	; repeat for length of PLC
+00000E3E                            
+00000E3E                            	@skip:
+00000E3E 4CDF 0600                  		movem.l	(sp)+,a1-a2
+00000E42 4E75                       		rts	
+00000E44                            ; End of function NewPLC
+00000E44                            
+00000E44                            ; ---------------------------------------------------------------------------
+00000E44                            ; Subroutine to	clear the pattern load cues
+00000E44                            ; ---------------------------------------------------------------------------
+00000E44                            
+00000E44                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000E44                            
+00000E44                            
+00000E44                            ClearPLC:				; XREF: NewPLC
+00000E44 45F8 F680                  		lea	(v_plc_buffer).w,a2 ; PLC buffer space in RAM
+00000E48 701F                       		moveq	#$1F,d0
+00000E4A                            
+00000E4A                            	@loop:
+00000E4A 429A                       		clr.l	(a2)+
+00000E4C 51C8 FFFC                  		dbf	d0,@loop
+00000E50 4E75                       		rts	
+00000E52                            ; End of function ClearPLC
+00000E52                            
+00000E52                            ; ---------------------------------------------------------------------------
+00000E52                            ; Subroutine to	use graphics listed in a pattern load cue
+00000E52                            ; ---------------------------------------------------------------------------
+00000E52                            
+00000E52                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000E52                            
+00000E52                            
+00000E52                            RunPLC:					; XREF: GM_Level; et al
+00000E52 4AB8 F680                  		tst.l	(v_plc_buffer).w
+00000E56 6700                       		beq.s	Rplc_Exit
+00000E58 4A78 F6F8                  		tst.w	(f_plc_execute).w
+00000E5C 6600                       		bne.s	Rplc_Exit
+00000E5E 2078 F680                  		movea.l	(v_plc_buffer).w,a0
+00000E62 43F8 AA00                  		lea	(v_ngfx_buffer).w,a1
+00000E66 3418                       		move.w	(a0)+,d2
+00000E68 6A00                       		bpl.s	loc_160E
+00000E6A D6FC 000A                  		adda.w	#$A,a3
+00000E6E                            
+00000E6E                            loc_160E:
+00000E6E 0242 7FFF                  		andi.w	#$7FFF,d2
+00000E72 1A18                       		move.b	(a0)+,d5
+00000E74 E145                       		asl.w	#8,d5
+00000E76 1A18                       		move.b	(a0)+,d5
+00000E78 7C10                       		moveq	#$10,d6
+00000E7A 7000                       		moveq	#0,d0
+00000E7C 21C8 F680                  		move.l	a0,(v_plc_buffer).w
+00000E80 21CB F6E0                  		move.l	a3,(v_ptrnemcode).w
+00000E84 21C0 F6E4                  		move.l	d0,($FFFFF6E4).w
+00000E88 21C0 F6E8                  		move.l	d0,($FFFFF6E8).w
+00000E8C 21C0 F6EC                  		move.l	d0,($FFFFF6EC).w
+00000E90 21C5 F6F0                  		move.l	d5,($FFFFF6F0).w
+00000E94 21C6 F6F4                  		move.l	d6,($FFFFF6F4).w
+00000E98                            		
+00000E98 31C2 F6F8                  		move.w	d2,(f_plc_execute).w	;Mercury LZ After End Sign PLC Bugfix
+00000E9C                            
+00000E9C                            Rplc_Exit:
+00000E9C 4E75                       		rts	
+00000E9E                            ; End of function RunPLC
+00000E9E                            
+00000E9E                            
+00000E9E                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000E9E                            
+00000E9E                            
+00000E9E                            sub_1642:				; XREF: VBla_04; VBla_12
+00000E9E 4A78 F6F8                  		tst.w	(f_plc_execute).w
+00000EA2 6700 0000                  		beq.w	locret_16DA
+00000EA6 31FC 0009 F6FA             		move.w	#9,($FFFFF6FA).w
+00000EAC 7000                       		moveq	#0,d0
+00000EAE 3038 F684                  		move.w	($FFFFF684).w,d0
+00000EB2 0678 0120 F684             		addi.w	#$120,($FFFFF684).w
+00000EB8 6000                       		bra.s	loc_1676
+00000EBA                            ; End of function sub_1642
+00000EBA                            
+00000EBA                            
+00000EBA                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000EBA                            
+00000EBA                            
+00000EBA                            sub_165E:				; XREF: Demo_Time
+00000EBA 4A78 F6F8                  		tst.w	(f_plc_execute).w
+00000EBE 6700                       		beq.s	locret_16DA
+00000EC0 31FC 0003 F6FA             		move.w	#3,($FFFFF6FA).w
+00000EC6 7000                       		moveq	#0,d0
+00000EC8 3038 F684                  		move.w	($FFFFF684).w,d0
+00000ECC 0678 0060 F684             		addi.w	#$60,($FFFFF684).w
+00000ED2                            
+00000ED2                            loc_1676:				; XREF: sub_1642
+00000ED2 49F9 00C0 0004             		lea	($C00004).l,a4
+00000ED8 E588                       		lsl.l	#2,d0
+00000EDA E448                       		lsr.w	#2,d0
+00000EDC 0040 4000                  		ori.w	#$4000,d0
+00000EE0 4840                       		swap	d0
+00000EE2 2880                       		move.l	d0,(a4)
+00000EE4 594C                       		subq.w	#4,a4
+00000EE6 2078 F680                  		movea.l	(v_plc_buffer).w,a0
+00000EEA 2678 F6E0                  		movea.l	(v_ptrnemcode).w,a3
+00000EEE 2038 F6E4                  		move.l	($FFFFF6E4).w,d0
+00000EF2 2238 F6E8                  		move.l	($FFFFF6E8).w,d1
+00000EF6 2438 F6EC                  		move.l	($FFFFF6EC).w,d2
+00000EFA 2A38 F6F0                  		move.l	($FFFFF6F0).w,d5
+00000EFE 2C38 F6F4                  		move.l	($FFFFF6F4).w,d6
+00000F02 43F8 AA00                  		lea	(v_ngfx_buffer).w,a1
+00000F06                            
+00000F06                            loc_16AA:				; XREF: sub_165E
+00000F06 3A7C 0008                  		movea.w	#8,a5
+00000F0A 5378 F6F8                  		subq.w	#1,(f_plc_execute).w
+00000F0E 6700                       		beq.s	loc_16DC
+00000F10 5378 F6FA                  		subq.w	#1,($FFFFF6FA).w
+00000F14 66F0                       		bne.s	loc_16AA
+00000F16 21C8 F680                  		move.l	a0,(v_plc_buffer).w
+00000F1A 21CB F6E0                  		move.l	a3,(v_ptrnemcode).w
+00000F1E 21C0 F6E4                  		move.l	d0,($FFFFF6E4).w
+00000F22 21C1 F6E8                  		move.l	d1,($FFFFF6E8).w
+00000F26 21C2 F6EC                  		move.l	d2,($FFFFF6EC).w
+00000F2A 21C5 F6F0                  		move.l	d5,($FFFFF6F0).w
+00000F2E 21C6 F6F4                  		move.l	d6,($FFFFF6F4).w
+00000F32                            
+00000F32                            locret_16DA:				; XREF: sub_1642
+00000F32 4E75                       		rts	
+00000F34                            ; ===========================================================================
+00000F34                            
+00000F34                            loc_16DC:				; XREF: sub_165E
+00000F34 41F8 F680                  		lea	(v_plc_buffer).w,a0
+00000F38 7015                       		moveq	#$15,d0
+00000F3A                            
+00000F3A                            loc_16E2:				; XREF: sub_165E
+00000F3A 20E8 0006                  		move.l	6(a0),(a0)+
+00000F3E 51C8 FFFA                  		dbf	d0,loc_16E2
+00000F42 4E75                       		rts	
+00000F44                            ; End of function sub_165E
+00000F44                            
+00000F44                            ; ---------------------------------------------------------------------------
+00000F44                            ; Subroutine to	execute	the pattern load cue
+00000F44                            ; ---------------------------------------------------------------------------
+00000F44                            
+00000F44                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000F44                            
+00000F44                            
+00000F44                            QuickPLC:
+00000F44 D040                       		add.w	d0,d0
+00000F46 3031 0000                  		move.w	(a1,d0.w),d0
+00000F4A 43F1 0000                  		lea	(a1,d0.w),a1
+00000F4E 3219                       		move.w	(a1)+,d1	; get length of PLC
+00000F50                            
+00000F50                            	Qplc_Loop:
+00000F50 2059                       		movea.l	(a1)+,a0	; get art pointer
+00000F52 7000                       		moveq	#0,d0
+00000F54 3019                       		move.w	(a1)+,d0	; get VRAM address
+00000F56 E588                       		lsl.l	#2,d0
+00000F58 E448                       		lsr.w	#2,d0
+00000F5A 0040 4000                  		ori.w	#$4000,d0
+00000F5E 4840                       		swap	d0
+00000F60 23C0 00C0 0004             		move.l	d0,($C00004).l	; converted VRAM address to VDP format
+00000F66 51C9 FFE8                  		dbf	d1,Qplc_Loop	; repeat for length of PLC
+00000F6A 4E75                       		rts	
+00000F6C                            ; End of function QuickPLC
+00000F6C                            
+00000F6C                            ; ---------------------------------------------------------------------------
+00000F6C                            ; Subroutine to	fade in from black
+00000F6C                            ; ---------------------------------------------------------------------------
+00000F6C                            
+00000F6C                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000F6C                            
+00000F6C                            
+00000F6C                            PaletteFadeIn:
+00000F6C 31FC 003F F626             		move.w	#$003F,(v_pfade_start).w ; set start position = 0; size = $40
+00000F72                            
+00000F72                            PalFadeIn_Alt:				; start position and size are already set
+00000F72 7000                       		moveq	#0,d0
+00000F74 41F8 FB00                  		lea	(v_pal1_wat).w,a0
+00000F78 1038 F626                  		move.b	(v_pfade_start).w,d0
+00000F7C D0C0                       		adda.w	d0,a0
+00000F7E 7200                       		moveq	#cBlack,d1
+00000F80 1038 F627                  		move.b	(v_pfade_size).w,d0
+00000F84                            
+00000F84                            	@fill:
+00000F84 30C1                       		move.w	d1,(a0)+
+00000F86 51C8 FFFC                  		dbf	d0,@fill 	; fill palette with black
+00000F8A                            
+00000F8A 383C 0015                  		move.w	#$15,d4
+00000F8E                            
+00000F8E                            	@mainloop:
+00000F8E 11FC 0012 F62A             		move.b	#$12,(v_vbla_routine).w
+00000F94 6100 0000                  		bsr.w	WaitForVBla
+00000F98 6100                       		bsr.s	FadeIn_FromBlack
+00000F9A 6100 FEB6                  		bsr.w	RunPLC
+00000F9E 51CC FFEE                  		dbf	d4,@mainloop
+00000FA2 4E75                       		rts	
+00000FA4                            ; End of function PaletteFadeIn
+00000FA4                            
+00000FA4                            
+00000FA4                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000FA4                            
+00000FA4                            
+00000FA4                            FadeIn_FromBlack:			; XREF: PaletteFadeIn
+00000FA4 7000                       		moveq	#0,d0
+00000FA6 41F8 FB00                  		lea	(v_pal1_wat).w,a0
+00000FAA 43F8 FB80                  		lea	(v_pal1_dry).w,a1
+00000FAE 1038 F626                  		move.b	(v_pfade_start).w,d0
+00000FB2 D0C0                       		adda.w	d0,a0
+00000FB4 D2C0                       		adda.w	d0,a1
+00000FB6 1038 F627                  		move.b	(v_pfade_size).w,d0
+00000FBA                            
+00000FBA                            	@addcolour:
+00000FBA 6100                       		bsr.s	FadeIn_AddColour ; increase colour
+00000FBC 51C8 FFFC                  		dbf	d0,@addcolour	; repeat for size of palette
+00000FC0                            
+00000FC0 0C38 0001 FE10             		cmpi.b	#1,(v_zone).w	; is level Labyrinth?
+00000FC6 6600                       		bne.s	@exit		; if not, branch
+00000FC8                            
+00000FC8 7000                       		moveq	#0,d0
+00000FCA 41F8 FA80                  		lea	(v_pal0_dry).w,a0
+00000FCE 43F8 FA00                  		lea	(v_pal0_wat).w,a1
+00000FD2 1038 F626                  		move.b	(v_pfade_start).w,d0
+00000FD6 D0C0                       		adda.w	d0,a0
+00000FD8 D2C0                       		adda.w	d0,a1
+00000FDA 1038 F627                  		move.b	(v_pfade_size).w,d0
+00000FDE                            
+00000FDE                            	@addcolour2:
+00000FDE 6100                       		bsr.s	FadeIn_AddColour ; increase colour again
+00000FE0 51C8 FFFC                  		dbf	d0,@addcolour2 ; repeat
+00000FE4                            
+00000FE4                            @exit:
+00000FE4 4E75                       		rts	
+00000FE6                            ; End of function FadeIn_FromBlack
+00000FE6                            
+00000FE6                            
+00000FE6                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00000FE6                            
+00000FE6                            
+00000FE6                            FadeIn_AddColour:			; XREF: FadeIn_FromBlack
+00000FE6                            @addblue:
+00000FE6 3419                       		move.w	(a1)+,d2
+00000FE8 3610                       		move.w	(a0),d3
+00000FEA B642                       		cmp.w	d2,d3		; is colour already at threshold level?
+00000FEC 6700                       		beq.s	@next		; if yes, branch
+00000FEE 3203                       		move.w	d3,d1
+00000FF0 0641 0200                  		addi.w	#$200,d1	; increase blue	value
+00000FF4 B242                       		cmp.w	d2,d1		; has blue reached threshold level?
+00000FF6 6200                       		bhi.s	@addgreen	; if yes, branch
+00000FF8 30C1                       		move.w	d1,(a0)+	; update palette
+00000FFA 4E75                       		rts	
+00000FFC                            ; ===========================================================================
+00000FFC                            
+00000FFC                            @addgreen:
+00000FFC 3203                       		move.w	d3,d1
+00000FFE 0641 0020                  		addi.w	#$20,d1		; increase green value
+00001002 B242                       		cmp.w	d2,d1
+00001004 6200                       		bhi.s	@addred
+00001006 30C1                       		move.w	d1,(a0)+	; update palette
+00001008 4E75                       		rts	
+0000100A                            ; ===========================================================================
+0000100A                            
+0000100A                            @addred:
+0000100A 5458                       		addq.w	#2,(a0)+	; increase red value
+0000100C 4E75                       		rts	
+0000100E                            ; ===========================================================================
+0000100E                            
+0000100E                            @next:
+0000100E 5448                       		addq.w	#2,a0		; next colour
+00001010 4E75                       		rts	
+00001012                            ; End of function FadeIn_AddColour
+00001012                            
+00001012                            
+00001012                            ; ---------------------------------------------------------------------------
+00001012                            ; Subroutine to fade out to black
+00001012                            ; ---------------------------------------------------------------------------
+00001012                            
+00001012                            
+00001012                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00001012                            
+00001012                            
+00001012                            PaletteFadeOut:
+00001012 31FC 003F F626             		move.w	#$003F,(v_pfade_start).w ; start position = 0; size = $40
+00001018 383C 0015                  		move.w	#$15,d4
+0000101C                            
+0000101C                            	@mainloop:
+0000101C 11FC 0012 F62A             		move.b	#$12,(v_vbla_routine).w
+00001022 6100 0000                  		bsr.w	WaitForVBla
+00001026 6100                       		bsr.s	FadeOut_ToBlack
+00001028 6100 FE28                  		bsr.w	RunPLC
+0000102C 51CC FFEE                  		dbf	d4,@mainloop
+00001030 4E75                       		rts	
+00001032                            ; End of function PaletteFadeOut
+00001032                            
+00001032                            
+00001032                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00001032                            
+00001032                            
+00001032                            FadeOut_ToBlack:			; XREF: PaletteFadeOut
+00001032 7000                       		moveq	#0,d0
+00001034 41F8 FB00                  		lea	(v_pal1_wat).w,a0
+00001038 1038 F626                  		move.b	(v_pfade_start).w,d0
+0000103C D0C0                       		adda.w	d0,a0
+0000103E 1038 F627                  		move.b	(v_pfade_size).w,d0
+00001042                            
+00001042                            	@decolour:
+00001042 6100                       		bsr.s	FadeOut_DecColour ; decrease colour
+00001044 51C8 FFFC                  		dbf	d0,@decolour	; repeat for size of palette
+00001048                            
+00001048 7000                       		moveq	#0,d0
+0000104A 41F8 FA80                  		lea	(v_pal0_dry).w,a0
+0000104E 1038 F626                  		move.b	(v_pfade_start).w,d0
+00001052 D0C0                       		adda.w	d0,a0
+00001054 1038 F627                  		move.b	(v_pfade_size).w,d0
+00001058                            
+00001058                            	@decolour2:
+00001058 6100                       		bsr.s	FadeOut_DecColour
+0000105A 51C8 FFFC                  		dbf	d0,@decolour2
+0000105E 4E75                       		rts	
+00001060                            ; End of function FadeOut_ToBlack
+00001060                            
+00001060                            
+00001060                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00001060                            
+00001060                            
+00001060                            FadeOut_DecColour:			; XREF: FadeOut_ToBlack
+00001060                            @dered:
+00001060 3410                       		move.w	(a0),d2
+00001062 6700                       		beq.s	@next
+00001064 3202                       		move.w	d2,d1
+00001066 0241 000E                  		andi.w	#$E,d1
+0000106A 6700                       		beq.s	@degreen
+0000106C 5558                       		subq.w	#2,(a0)+	; decrease red value
+0000106E 4E75                       		rts	
+00001070                            ; ===========================================================================
+00001070                            
+00001070                            @degreen:
+00001070 3202                       		move.w	d2,d1
+00001072 0241 00E0                  		andi.w	#$E0,d1
+00001076 6700                       		beq.s	@deblue
+00001078 0458 0020                  		subi.w	#$20,(a0)+	; decrease green value
+0000107C 4E75                       		rts	
+0000107E                            ; ===========================================================================
+0000107E                            
+0000107E                            @deblue:
+0000107E 3202                       		move.w	d2,d1
+00001080 0241 0E00                  		andi.w	#$E00,d1
+00001084 6700                       		beq.s	@next
+00001086 0458 0200                  		subi.w	#$200,(a0)+	; decrease blue	value
+0000108A 4E75                       		rts	
+0000108C                            ; ===========================================================================
+0000108C                            
+0000108C                            @next:
+0000108C 5448                       		addq.w	#2,a0
+0000108E 4E75                       		rts	
+00001090                            ; End of function FadeOut_DecColour
+00001090                            
+00001090                            ; ---------------------------------------------------------------------------
+00001090                            ; Subroutine to	fade in from white (Special Stage)
+00001090                            ; ---------------------------------------------------------------------------
+00001090                            
+00001090                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00001090                            
+00001090                            
+00001090                            PaletteWhiteIn:				; XREF: GM_Special
+00001090 31FC 003F F626             		move.w	#$003F,(v_pfade_start).w ; start position = 0; size = $40
+00001096 7000                       		moveq	#0,d0
+00001098 41F8 FB00                  		lea	(v_pal1_wat).w,a0
+0000109C 1038 F626                  		move.b	(v_pfade_start).w,d0
+000010A0 D0C0                       		adda.w	d0,a0
+000010A2 323C 0EEE                  		move.w	#cWhite,d1
+000010A6 1038 F627                  		move.b	(v_pfade_size).w,d0
+000010AA                            
+000010AA                            	@fill:
+000010AA 30C1                       		move.w	d1,(a0)+
+000010AC 51C8 FFFC                  		dbf	d0,@fill 	; fill palette with white
+000010B0                            
+000010B0 383C 0015                  		move.w	#$15,d4
+000010B4                            
+000010B4                            	@mainloop:
+000010B4 11FC 0012 F62A             		move.b	#$12,(v_vbla_routine).w
+000010BA 6100 0000                  		bsr.w	WaitForVBla
+000010BE 6100                       		bsr.s	WhiteIn_FromWhite
+000010C0 6100 FD90                  		bsr.w	RunPLC
+000010C4 51CC FFEE                  		dbf	d4,@mainloop
+000010C8 4E75                       		rts	
+000010CA                            ; End of function PaletteWhiteIn
+000010CA                            
+000010CA                            
+000010CA                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+000010CA                            
+000010CA                            
+000010CA                            WhiteIn_FromWhite:			; XREF: PaletteWhiteIn
+000010CA 7000                       		moveq	#0,d0
+000010CC 41F8 FB00                  		lea	(v_pal1_wat).w,a0
+000010D0 43F8 FB80                  		lea	(v_pal1_dry).w,a1
+000010D4 1038 F626                  		move.b	(v_pfade_start).w,d0
+000010D8 D0C0                       		adda.w	d0,a0
+000010DA D2C0                       		adda.w	d0,a1
+000010DC 1038 F627                  		move.b	(v_pfade_size).w,d0
+000010E0                            
+000010E0                            	@decolour:
+000010E0 6100                       		bsr.s	WhiteIn_DecColour ; decrease colour
+000010E2 51C8 FFFC                  		dbf	d0,@decolour	; repeat for size of palette
+000010E6                            
+000010E6 0C38 0001 FE10             		cmpi.b	#1,(v_zone).w	; is level Labyrinth?
+000010EC 6600                       		bne.s	@exit		; if not, branch
+000010EE 7000                       		moveq	#0,d0
+000010F0 41F8 FA80                  		lea	(v_pal0_dry).w,a0
+000010F4 43F8 FA00                  		lea	(v_pal0_wat).w,a1
+000010F8 1038 F626                  		move.b	(v_pfade_start).w,d0
+000010FC D0C0                       		adda.w	d0,a0
+000010FE D2C0                       		adda.w	d0,a1
+00001100 1038 F627                  		move.b	(v_pfade_size).w,d0
+00001104                            
+00001104                            	@decolour2:
+00001104 6100                       		bsr.s	WhiteIn_DecColour
+00001106 51C8 FFFC                  		dbf	d0,@decolour2
+0000110A                            
+0000110A                            	@exit:
+0000110A 4E75                       		rts	
+0000110C                            ; End of function WhiteIn_FromWhite
+0000110C                            
+0000110C                            
+0000110C                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000110C                            
+0000110C                            
+0000110C                            WhiteIn_DecColour:			; XREF: WhiteIn_FromWhite
+0000110C                            @deblue:
+0000110C 3419                       		move.w	(a1)+,d2
+0000110E 3610                       		move.w	(a0),d3
+00001110 B642                       		cmp.w	d2,d3
+00001112 6700                       		beq.s	@next
+00001114 3203                       		move.w	d3,d1
+00001116 0441 0200                  		subi.w	#$200,d1	; decrease blue	value
+0000111A 6500                       		bcs.s	@degreen
+0000111C B242                       		cmp.w	d2,d1
+0000111E 6500                       		bcs.s	@degreen
+00001120 30C1                       		move.w	d1,(a0)+
+00001122 4E75                       		rts	
+00001124                            ; ===========================================================================
+00001124                            
+00001124                            @degreen:
+00001124 3203                       		move.w	d3,d1
+00001126 0441 0020                  		subi.w	#$20,d1		; decrease green value
+0000112A 6500                       		bcs.s	@dered
+0000112C B242                       		cmp.w	d2,d1
+0000112E 6500                       		bcs.s	@dered
+00001130 30C1                       		move.w	d1,(a0)+
+00001132 4E75                       		rts	
+00001134                            ; ===========================================================================
+00001134                            
+00001134                            @dered:
+00001134 5558                       		subq.w	#2,(a0)+	; decrease red value
+00001136 4E75                       		rts	
+00001138                            ; ===========================================================================
+00001138                            
+00001138                            @next:
+00001138 5448                       		addq.w	#2,a0
+0000113A 4E75                       		rts	
+0000113C                            ; End of function WhiteIn_DecColour
+0000113C                            
+0000113C                            ; ---------------------------------------------------------------------------
+0000113C                            ; Subroutine to fade to white (Special Stage)
+0000113C                            ; ---------------------------------------------------------------------------
+0000113C                            
+0000113C                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000113C                            
+0000113C                            
+0000113C                            PaletteWhiteOut:			; XREF: GM_Special
+0000113C 31FC 003F F626             		move.w	#$003F,(v_pfade_start).w ; start position = 0; size = $40
+00001142 383C 0015                  		move.w	#$15,d4
+00001146                            
+00001146                            	@mainloop:
+00001146 11FC 0012 F62A             		move.b	#$12,(v_vbla_routine).w
+0000114C 6100 0000                  		bsr.w	WaitForVBla
+00001150 6100                       		bsr.s	WhiteOut_ToWhite
+00001152 6100 FCFE                  		bsr.w	RunPLC
+00001156 51CC FFEE                  		dbf	d4,@mainloop
+0000115A 4E75                       		rts	
+0000115C                            ; End of function PaletteWhiteOut
+0000115C                            
+0000115C                            
+0000115C                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000115C                            
+0000115C                            
+0000115C                            WhiteOut_ToWhite:			; XREF: PaletteWhiteOut
+0000115C 7000                       		moveq	#0,d0
+0000115E 41F8 FB00                  		lea	(v_pal1_wat).w,a0
+00001162 1038 F626                  		move.b	(v_pfade_start).w,d0
+00001166 D0C0                       		adda.w	d0,a0
+00001168 1038 F627                  		move.b	(v_pfade_size).w,d0
+0000116C                            
+0000116C                            	@addcolour:
+0000116C 6100                       		bsr.s	WhiteOut_AddColour
+0000116E 51C8 FFFC                  		dbf	d0,@addcolour
+00001172                            
+00001172 7000                       		moveq	#0,d0
+00001174 41F8 FA80                  		lea	(v_pal0_dry).w,a0
+00001178 1038 F626                  		move.b	(v_pfade_start).w,d0
+0000117C D0C0                       		adda.w	d0,a0
+0000117E 1038 F627                  		move.b	(v_pfade_size).w,d0
+00001182                            
+00001182                            	@addcolour2:
+00001182 6100                       		bsr.s	WhiteOut_AddColour
+00001184 51C8 FFFC                  		dbf	d0,@addcolour2
+00001188 4E75                       		rts	
+0000118A                            ; End of function WhiteOut_ToWhite
+0000118A                            
+0000118A                            
+0000118A                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000118A                            
+0000118A                            
+0000118A                            WhiteOut_AddColour:			; XREF: WhiteOut_ToWhite
+0000118A                            @addred:
+0000118A 3410                       		move.w	(a0),d2
+0000118C 0C42 0EEE                  		cmpi.w	#cWhite,d2
+00001190 6700                       		beq.s	@next
+00001192 3202                       		move.w	d2,d1
+00001194 0241 000E                  		andi.w	#$E,d1
+00001198 0C41 000E                  		cmpi.w	#cRed,d1
+0000119C 6700                       		beq.s	@addgreen
+0000119E 5458                       		addq.w	#2,(a0)+	; increase red value
+000011A0 4E75                       		rts	
+000011A2                            ; ===========================================================================
+000011A2                            
+000011A2                            @addgreen:
+000011A2 3202                       		move.w	d2,d1
+000011A4 0241 00E0                  		andi.w	#$E0,d1
+000011A8 0C41 00E0                  		cmpi.w	#cGreen,d1
+000011AC 6700                       		beq.s	@addblue
+000011AE 0658 0020                  		addi.w	#$20,(a0)+	; increase green value
+000011B2 4E75                       		rts	
+000011B4                            ; ===========================================================================
+000011B4                            
+000011B4                            @addblue:
+000011B4 3202                       		move.w	d2,d1
+000011B6 0241 0E00                  		andi.w	#$E00,d1
+000011BA 0C41 0E00                  		cmpi.w	#cBlue,d1
+000011BE 6700                       		beq.s	@next
+000011C0 0658 0200                  		addi.w	#$200,(a0)+	; increase blue	value
+000011C4 4E75                       		rts	
+000011C6                            ; ===========================================================================
+000011C6                            
+000011C6                            @next:
+000011C6 5448                       		addq.w	#2,a0
+000011C8 4E75                       		rts	
+000011CA                            ; End of function WhiteOut_AddColour
+000011CA                            
+000011CA                            ; ---------------------------------------------------------------------------
+000011CA                            ; Palette cycling routine - Sega logo
+000011CA                            ; ---------------------------------------------------------------------------
+000011CA                            
+000011CA                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+000011CA                            
+000011CA                            ; ===========================================================================
+000011CA                            
+000011CA                            ; ---------------------------------------------------------------------------
+000011CA                            ; Subroutines to load palettes
+000011CA                            
+000011CA                            ; input:
+000011CA                            ;	d0 = index number for palette
+000011CA                            ; ---------------------------------------------------------------------------
+000011CA                            
+000011CA                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+000011CA                            
+000011CA                            
+000011CA                            PalLoad1:
+000011CA 43F9 0000 0000             		lea	(PalPointers).l,a1
+000011D0 E748                       		lsl.w	#3,d0
+000011D2 D2C0                       		adda.w	d0,a1
+000011D4 2459                       		movea.l	(a1)+,a2	; get palette data address
+000011D6 3659                       		movea.w	(a1)+,a3	; get target RAM address
+000011D8 D6FC 0080                  		adda.w	#$80,a3		; skip to "main" RAM address
+000011DC 3E19                       		move.w	(a1)+,d7	; get length of palette data
+000011DE                            
+000011DE                            	@loop:
+000011DE 26DA                       		move.l	(a2)+,(a3)+	; move data to RAM
+000011E0 51CF FFFC                  		dbf	d7,@loop
+000011E4 4E75                       		rts	
+000011E6                            ; End of function PalLoad1
+000011E6                            
+000011E6                            
+000011E6                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+000011E6                            
+000011E6                            
+000011E6                            PalLoad2:
+000011E6 43F9 0000 0000             		lea	(PalPointers).l,a1
+000011EC E748                       		lsl.w	#3,d0
+000011EE D2C0                       		adda.w	d0,a1
+000011F0 2459                       		movea.l	(a1)+,a2	; get palette data address
+000011F2 3659                       		movea.w	(a1)+,a3	; get target RAM address
+000011F4 3E19                       		move.w	(a1)+,d7	; get length of palette
+000011F6                            
+000011F6                            	@loop:
+000011F6 26DA                       		move.l	(a2)+,(a3)+	; move data to RAM
+000011F8 51CF FFFC                  		dbf	d7,@loop
+000011FC 4E75                       		rts	
+000011FE                            ; End of function PalLoad2
+000011FE                            
+000011FE                            		include	"_asm\Palette Pointers.asm"
+000011FE                            ; ---------------------------------------------------------------------------
+000011FE                            ; Palette pointers
+000011FE                            ; ---------------------------------------------------------------------------
+000011FE                            
+000011FE                            palp:	macro paladdress,ramaddress,colours
+000011FE                            	dc.l paladdress
+000011FE                            	dc.w ramaddress, (colours>>1)-1
+000011FE                            	endm
+000011FE                            
+000011FE                            PalPointers:
+000011FE                            
+000011FE                            ; palette address, RAM address, colours
+000011FE                            
+000011FE 0000 0000 FB00 001F        ptr_Pal_SegaBG:		palp	Pal_SegaBG,$FB00,$40		; 0 - Sega logo
+00001206                            			even
+00001206                            
+00001206                            
+00001206 =00000000                  palid_SegaBG:		equ (ptr_Pal_SegaBG-PalPointers)/8
+00001206 =00000000                  palid_SegaBG:		equ (ptr_Pal_SegaBG-PalPointers)/8
+00001206                            
+00001206                            ; ---------------------------------------------------------------------------
+00001206                            ; Palette data
+00001206                            ; ---------------------------------------------------------------------------
+00001206                            Pal_SegaBG:	; put palette here
+00001206                            
+00001206                            ; ---------------------------------------------------------------------------
+00001206                            ; Subroutine to	wait for VBlank routines to complete
+00001206                            ; ---------------------------------------------------------------------------
+00001206                            
+00001206                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+00001206                            
+00001206                            
+00001206                            WaitForVBla:				; XREF: PauseGame
+00001206 46FC 2300                  		move	#$2300,sr
+0000120A                            
+0000120A                            	@wait:
+0000120A 4A38 F62A                  		tst.b	(v_vbla_routine).w ; has VBlank routine finished?
+0000120E 66FA                       		bne.s	@wait		; if not, branch
+00001210 4E75                       		rts	
+00001212                            ; End of function WaitForVBla
+00001212                            
+00001212                            ; ---------------------------------------------------------------------------
+00001212                            ; Sega screen
+00001212                            ; ---------------------------------------------------------------------------
+00001212                            
+00001212                            GM_Gamemode01:				; XREF: GameModeArray
+00001212 103C 00E4                  		move.b	#$E4,d0
+00001216 6100 FC2C                  		bsr.w	ClearPLC
+0000121A 6100 FDF6                  		bsr.w	PaletteFadeOut
+0000121E 4DF9 00C0 0004             		lea	($C00004).l,a6
+00001224 3CBC 8004                  		move.w	#$8004,(a6)	; use 8-colour mode
+00001228 3CBC 8230                  		move.w	#$8200+(vram_fg>>10),(a6) ; set foreground nametable address
+0000122C 3CBC 8407                  		move.w	#$8400+(vram_bg>>13),(a6) ; set background nametable address
+00001230 3CBC 8700                  		move.w	#$8700,(a6)	; set background colour (palette entry 0)
+00001234 3CBC 8B00                  		move.w	#$8B00,(a6)	; full-screen vertical scrolling
+00001238 4238 F64E                  		clr.b	(f_wtr_state).w
+0000123C 46FC 2700                  		move	#$2700,sr
+00001240 3038 F60C                  		move.w	(v_vdp_buffer1).w,d0
+00001244 0200 00BF                  		andi.b	#$BF,d0
+00001248 33C0 00C0 0004             		move.w	d0,($C00004).l
+0000124E 6100 FAFC                  		bsr.w	ClearScreen
+00001252                            
+00001252 43F9 00FF 0000 203C 6510+  		copyTilemap	$FF0000,$E510,$17,7
+00001266 43F9 00FF 0180 203C 4000+  		copyTilemap	$FF0180,$C000,$27,$1B
+0000127A                            
+0000127A                            	@loadpal:
+0000127A 7000                       		moveq	#palid_SegaBG,d0
+0000127C 6100 FF68                  		bsr.w	PalLoad2	
+00001280 31FC 0000 F662             		move.w	#0,(v_pal_buffer+$12).w
+00001286 31FC 0000 F660             		move.w	#0,(v_pal_buffer+$10).w
+0000128C 3038 F60C                  		move.w	(v_vdp_buffer1).w,d0
+00001290 0000 0040                  		ori.b	#$40,d0
+00001294 33C0 00C0 0004             		move.w	d0,($C00004).l
+0000129A                            
+0000129A                            Sega_WaitPal:
+0000129A 11FC 0002 F62A             		move.b	#2,(v_vbla_routine).w
+000012A0 6100 FF64                  		bsr.w	WaitForVBla
+000012A4                            
+000012A4 103C 00E1                  		move.b	#$E1,d0
+000012A8 11FC 0014 F62A             		move.b	#$14,(v_vbla_routine).w
+000012AE 6100 FF56                  		bsr.w	WaitForVBla
+000012B2 31FC 001E F614             		move.w	#$1E,(v_demolength).w
+000012B8                            
+000012B8                            Sega_WaitEnd:
+000012B8 11FC 0002 F62A             		move.b	#2,(v_vbla_routine).w
+000012BE 6100 FF46                  		bsr.w	WaitForVBla
+000012C2 4A78 F614                  		tst.w	(v_demolength).w
+000012C6 6700                       		beq.s	Sega_GotoTitle
+000012C8 0238 0080 F605             		andi.b	#btnStart,(v_jpadpress1).w ; is Start button pressed?
+000012CE 67E8                       		beq.s	Sega_WaitEnd	; if not, branch
+000012D0                            
+000012D0                            Sega_GotoTitle:
+000012D0 4E75                       		rts	
+000012D2                            ; ===========================================================================
+000012D2                            
+000012D2                            EndOfRom:
+000012D2                            
